@@ -1,120 +1,175 @@
 import { prisma } from '@repo/db';
 import { WebSocketServer } from 'ws';
 import { agent } from './agent/agentClient';
-import getSystemPrompt from './lib/prompts';
+import getSystemPrompt, { generateScoringPrompt } from './lib/prompts';
 import { parse } from 'url';
-
+import { cleanAndParseJson } from './lib/auxOps';
 
 enum STATUS {
   START = "start",
   ONGOING = 'ongoing',
   FINISHED = 'finished'  
 }
+
 interface IncomingDataProps {
-  userId: string;
-  type: STATUS;
+  userId?: string;
+  status: STATUS;
   answer: string;
+  question?: string;
+  sessionId?: string;
 }
 
 const wss = new WebSocketServer({ port: 8080 });
 
-wss.on('connection', async function connection(ws, req) {
-    //if error throw error
+wss.on('connection', async (ws, req) => {
   ws.on('error', console.error);
-  
-  if(!req.url){
-    return;
-  }
-  const { pathname, query } = parse(req.url, true);
-  //get the portal id 
-  const portalId = query.portalId;
-  if(!portalId){
-    return;
-  }
-  const portal = await prisma.portal.findFirst({
-    where: {
-        id: portalId as string
-    }
-  })
-  if(!portal){
-    return;
-  }
-  //create a session
-  const userId = query.userId;
-  if(!userId){
-    return;
-  }
-  const session = await prisma.session.create({
-    data: {
-      portalId: portal.id,
-      userId: userId as string,
-    }
-  })
-  console.log(session,'session created')
-  //feed the context to agent initially
-  const response = await agent.models.generateContent({
+
+  if (!req.url) return;
+
+  const { query } = parse(req.url, true);
+  const portalId = query.portalId as string;
+  const userId = query.userId as string;
+
+  if (!portalId || !userId) return;
+
+  const portal = await prisma.portal.findFirst({ where: { id: portalId } });
+  if (!portal) return;
+
+  // Start with initial system question
+  const initialResponse = await agent.models.generateContent({
     model: "gemini-2.0-flash",
-    contents: "Initial conversation",
+    contents: "Begin the interview now",
     config: {
       systemInstruction: getSystemPrompt(portal),
     },
   });
-  const ResData = {
-    question: response.text,
-    sessionId: session.id,
-    portalId: portal.id,
-  }
-  //send back the responce
-  ws.send(JSON.stringify(ResData));
 
-  //listen for the message event
-  ws.on('message', async function incoming(data: IncomingDataProps) {
-    const parcedData = JSON.parse(data.toString());
-    //if status finished dont send any more messages
-    if(parcedData.status === STATUS.FINISHED){
-      console.log("finished")
-      ws.close();
-      return;
-    }
-    //if status start send the question
-    const response = await agent.models.generateContent({
-      model: "gemini-2.0-flash",
-      //pass the prev conversation and latest answer to the agent
-      contents: parcedData.answer,
-      config: {
-        systemInstruction: getSystemPrompt(portal),
-      },
-    });
-    //save the conversation to db
+  const initialParsed = cleanAndParseJson(initialResponse.text as string);
+  ws.send(JSON.stringify({
+    status: initialParsed.status ,
+    question: initialParsed.question,
+  }));
+
+  //listen for the incomming messages
+  ws.on('message', async (data) => {
     try {
-     //find session and add conversation to it
-     const updatedSesion = await prisma.session.update({
-       where: {
-         id: ResData.sessionId
-       },
-       data: {
-         conversation: {
-           create: {
-             question: ResData.question as string,
-             answer: parcedData.answer as string,
-           }
-         }
-       },
-     })
-     console.log(updatedSesion, 'this is the updated sesion')
-    } catch (error) {
-      console.log(error, "error in saving db")
-      ws.send("error in saving db")
+      const parsedData: IncomingDataProps = JSON.parse(data.toString());
+
+      switch (parsedData.status) {
+        case STATUS.START: {
+          const questionAnswerPair = {
+            question: parsedData.question!,
+            answer: parsedData.answer,
+          };
+
+          const scoreResponse = await agent.models.generateContent({
+            model: "gemini-2.0-flash",
+            contents: 'Generate the response',
+            config: {
+              systemInstruction: generateScoringPrompt(questionAnswerPair),
+            },
+          });
+
+          const parsedScore = cleanAndParseJson(scoreResponse.text as string);
+
+          const session = await prisma.session.create({
+            data: {
+              userId,
+              portalId,
+              conversation: {
+                create: {
+                  question: questionAnswerPair.question,
+                  answer: questionAnswerPair.answer,
+                  score: parsedScore.score,
+                },
+              },
+            },
+            include: {
+              conversation: true
+            }
+          });
+
+          const nextQuestion = await agent.models.generateContent({
+            model: "gemini-2.0-flash",
+            //pass the array of all conversation data
+            contents: `previous conversation: ${session?.conversation}\n. Now generate the next question`,
+            config: {
+              systemInstruction: getSystemPrompt(portal),
+            },
+          });
+          //clean and parced the next question data
+          const parsedNextQuestion = cleanAndParseJson(nextQuestion.text as string);
+          console.log(parsedNextQuestion,'parsed next question');
+
+          ws.send(JSON.stringify({
+            status: parsedNextQuestion.status,
+            question: parsedNextQuestion.question,
+            sessionId: session.id,
+          }));
+          break;
+        }
+
+        case STATUS.ONGOING: {
+          const scoreResponse = await agent.models.generateContent({
+            model: "gemini-2.0-flash",
+            contents: 'Generate the response',
+            config: {
+              systemInstruction: generateScoringPrompt({
+                question: parsedData.question!,
+                answer: parsedData.answer,
+              }),
+            },
+          });
+
+          const parsedScore = cleanAndParseJson(scoreResponse.text as string);
+
+          const updatedSession = await prisma.session.update({
+            where: { id: parsedData.sessionId! },
+            data: {
+              conversation: {
+                create: {
+                  question: parsedData.question!,
+                  answer: parsedData.answer,
+                  score: parsedScore.score,
+                },
+              },
+            },
+            include: { conversation: true },
+          });
+          //prepare the converstaion for llm
+          const conversationString = updatedSession.conversation
+          .map(c => `Q: ${c.question}\nA: ${c.answer}`)
+          .join('\n\n');
+
+          const nextQuestion = await agent.models.generateContent({
+            model: "gemini-2.0-flash",
+            contents: `previous conversation: ${conversationString}\n. Now generate the response`,
+            config: {
+              systemInstruction: getSystemPrompt(portal),
+            },
+          });
+
+          const parsedNext = cleanAndParseJson(nextQuestion.text as string);
+
+          ws.send(JSON.stringify({
+            status: parsedNext.status,
+            question: parsedNext.question,
+          }));
+          break;
+        }
+
+        case STATUS.FINISHED: {
+          //write the logic of handling the finished state
+          ws.close();
+          break;
+        }
+
+        default:
+          break;
+      }
+    } catch (err) {
+      console.error("Failed to handle message:", err);
+      ws.send(JSON.stringify({ error: "Internal server error" }));
     }
-    //prepare the response data
-    const responseData = {
-      status: STATUS.ONGOING,
-      question: response.text,
-      sessionId: session.id,
-      portalId: portal.id,
-    }
-    //continue the conversation
-    ws.send(JSON.stringify(responseData));
   });
-  
 });

@@ -58,7 +58,10 @@ You are allowed to ask 5–10 strong, thoughtful questions in total. Format each
 IMPORTANT: OUTPUT FORMAT
 - The output should be a JSON object with the following keys:
   - question: The question to ask the candidate
-  - status: The status of the question, either "start" or "ongoing"
+  - status: The status of the question, either "start", "ongoing" or "finished"
+  - if previous conversation is available, then put status as "ongoing"
+  - if enough questions are asked, then put status as "finished"
+  - if interview is finished, add this inside question property "you will be notfied through email for further steps" 
 
 Example Output:
 {
@@ -69,11 +72,57 @@ Example Output:
  "question": "What is your experience with problem-solving under pressure?",
  "status": "ongoing"
 }
+ {
+ "question": "Can you tell me which tools and services you used and why for your previous project?",
+ "status": "ongoing"
+}
 {
  "question": "ok thanks to meet you, bye",
  "status": "finished"
 }
+`}
 
-Begin the interview now.
-`;
+
+interface QuestionAnswerPair {
+  question: string;
+  answer: string;
 }
+
+// Function to generate scoring prompt
+export function generateScoringPrompt(
+  questionAnswerPair: QuestionAnswerPair
+): string {
+
+  const { question, answer } = questionAnswerPair;
+
+  return `
+You are an AI interviewer assistant. Your task is to evaluate candidate responses to job interview questions using a clear and fair rubric.
+
+🎯 Evaluation Criteria:
+1. Analyze the quality, relevance, and clarity of the candidate's answer.
+2. Consider how well the answer aligns with the expectations of the role and required skills.
+3. Assign a score on a scale of 1 to 10, where:
+   - 9–10: Excellent, complete, highly relevant answer
+   - 7–8: Good answer with minor gaps
+   - 5–6: Average or vague answer, lacks depth
+   - 3–4: Weak answer, missing key points
+   - 1–2: Poor or off-topic answer
+
+🧾 Input:
+{
+  "question": "${question}",
+  "answer": "${answer}"
+}
+
+📦 Output format (JSON):
+{
+  "question": "<original question text>",
+  "answer": "<candidate's answer>",
+  "score": <number between 1 and 10>
+}
+
+Return only the JSON object. Do not include reasoning, explanations, or extra text.
+`.trim();
+}
+
+
