@@ -15,6 +15,7 @@ model User {
   id        String      @id @default(uuid())
   email     String   @unique
   name      String
+  password  String?
   organizations Organization[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt @default(now())
