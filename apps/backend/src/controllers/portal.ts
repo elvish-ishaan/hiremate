@@ -6,9 +6,11 @@ export const createPortal = async (req: Request, res: Response) => {
     try {
         //add validation
         //save to db
+        console.log(req.body,'getting body ')
+        const { title, description, role, skillsRequired, candidates, jobType, department, organizationId } = req.body
         try {
             const portal = await prisma.portal.create({
-                data: req.body
+                data: req
             })
             //send demo link to first candidate
             const candidateEmail = portal.candidates[0]

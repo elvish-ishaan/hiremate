@@ -1,5 +1,6 @@
 
 import "@/app/globals.css"; 
+import Feature from "@/components/Landing/Feature";
 import Hero from "@/components/Landing/Hero";
 import { FlickeringGrid } from "@/components/magicui/flickering-grid";
 import Navbar from "@/components/nav/Navbar";
@@ -9,7 +10,7 @@ const Home = () => {
     <div className="">
       <Navbar/>
       <FlickeringGrid
-        className="absolute -z-10 inset-0 h-screen w-full"
+        className="absolute -z-10 inset-0 h-[120vh] w-full"
         squareSize={8}
         gridGap={10}
         color="#52b788"
@@ -19,6 +20,7 @@ const Home = () => {
       <div className=" w-full flex justify-center items-center">
         <Hero/>
       </div>
+      <Feature/>
     </div>
   )
 }
