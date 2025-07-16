@@ -59,6 +59,17 @@ export default function CreatePortalPage() {
         if (!res.data.success) {
             toast.error(res.data.message);
         }
+        //clear form
+        setForm({
+            title: "",
+            description: "",
+            role: "",
+            jobType: "",
+            department: "",
+            skillsRequired: "",
+            organizationId: "",
+        });
+        setCandidates([]);
         toast.success("Portal created successfully");
     } catch (error) {
         toast.error("Something went wrong");
