@@ -3,7 +3,7 @@ import { WebSocketServer } from 'ws';
 import { agent } from './agent/agentClient';
 import getSystemPrompt, { generateScoringPrompt } from './lib/prompts';
 import { parse } from 'url';
-import { cleanAndParseJson } from './lib/auxOps';
+import { cleanAndParseJson, encodeWAV } from './lib/auxOps';
 
 enum STATUS {
   PING = "ping",
@@ -60,7 +60,26 @@ wss.on('connection', async (ws, req) => {
           });
         
           const initialParsed = cleanAndParseJson(initialResponse.text as string);
+          //generate the audio of the text
+          const response = await agent.models.generateContent({
+             model: "gemini-2.5-flash-preview-tts",
+             contents: [{ parts: [{ text: initialParsed.question }] }],
+             config: {
+                   responseModalities: ['AUDIO'],
+                   speechConfig: {
+                      voiceConfig: {
+                         prebuiltVoiceConfig: { voiceName: 'Gacrux' },
+                      },
+                   },
+             },
+          });
+       
+          const data = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+          const rawPcmBuffer = Buffer.from(data, 'base64');
+          const wavBuffer = encodeWAV(rawPcmBuffer);
+
           ws.send(JSON.stringify({
+            questionBuffer: wavBuffer,
             status: initialParsed.status ,
             question: initialParsed.question,
           }));

@@ -33,6 +33,7 @@ export default function InterviewPage() {
   const [status, setStatus] = useState<InterviewStatus>(InterviewStatus.PING);
   const [latestQuestion, setLatestQuestion] = useState<string>("");
   const [conversation, setConversation] = useState<Conversation[]>([]);
+  const [audioBuffer, setAudioBuffer] = useState<Blob | null>(null);
 
   useEffect(() => {
     const initMedia = async () => {
@@ -68,8 +69,14 @@ export default function InterviewPage() {
       const data = JSON.parse(event.data);
       console.log("Received message from server:", data);
       setStatus(data.status);
+      
       setLatestQuestion(data.question);
       setConversation([...conversation, { agent: data.question, candidate: "yeah i can tell you"}])
+      const buffer = new Uint8Array(data.questionBuffer?.data);
+      // Create a blob from it
+      const blob = new Blob([buffer], { type: 'audio/wav' });
+      console.log(blob)
+      setAudioBuffer(blob);
       
     };
     socket.onclose = (event) => {
@@ -80,21 +87,17 @@ export default function InterviewPage() {
     };
   }, []);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  //play the audio when ever the auido buffer changes
+  useEffect(() => {
+    if (audioBuffer) {
+      console.log("playing audio.......");
+      const audio = new Audio(URL.createObjectURL(new Blob([audioBuffer])));
+      audio.play();
+    }
+  }, [audioBuffer]);
 
-    setMessages((prev) => [...prev, { from: "user", text: input }]);
+  
 
-    // Simulate AI response (Replace this with WebSocket or API)
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        { from: "ai", text: `AI says: "${input}" — interesting!` },
-      ]);
-    }, 1000);
-
-    setInput("");
-  };
 
   return (
     <div className="flex justify-between min-h-screen">
