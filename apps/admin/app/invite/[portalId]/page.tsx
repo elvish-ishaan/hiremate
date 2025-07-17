@@ -3,10 +3,23 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { SendHorizonal, Bot } from "lucide-react";
+import { SendHorizonal, Bot, PhoneCall, User2, Eye } from "lucide-react";
 import { toast } from "sonner";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+
+enum InterviewStatus {
+    PING = "ping",
+    START = "start",
+    ONGOING = 'ongoing',
+    FINISHED = 'finished'
+}
+
+interface Conversation {
+  agent: string;
+  candidate?: string;
+}
 
 export default function InterviewPage() {
   const { portalId } = useParams();
@@ -16,8 +29,10 @@ export default function InterviewPage() {
     { from: "ai", text: "Welcome to your AI interview! Ready to begin?" },
   ]);
   const [input, setInput] = useState("");
-
   const [hasMedia, setHasMedia] = useState(false);
+  const [status, setStatus] = useState<InterviewStatus>(InterviewStatus.PING);
+  const [latestQuestion, setLatestQuestion] = useState<string>("");
+  const [conversation, setConversation] = useState<Conversation[]>([]);
 
   useEffect(() => {
     const initMedia = async () => {
@@ -39,6 +54,32 @@ export default function InterviewPage() {
     initMedia();
   }, []);
 
+  const userId = "258ff316-ea42-49a7-83cf-9a36e6897bc6"
+  //init the websocker connection 
+  useEffect(() => {
+    const socket = new WebSocket(`ws://localhost:5000?portalId=${portalId}&userId=${userId}`);
+    socket.onopen = () => {
+      console.log("WebSocket connection established.");
+      //send the ping message on server
+      socket.send(JSON.stringify({ status: InterviewStatus.PING }));
+    };
+    socket.onmessage = (event) => {
+      console.log('recve...............')
+      const data = JSON.parse(event.data);
+      console.log("Received message from server:", data);
+      setStatus(data.status);
+      setLatestQuestion(data.question);
+      setConversation([...conversation, { agent: data.question, candidate: "yeah i can tell you"}])
+      
+    };
+    socket.onclose = (event) => {
+      console.log("WebSocket connection closed:", event.code, event.reason);
+    };
+    return () => {
+      socket.close();
+    };
+  }, []);
+
   const handleSend = () => {
     if (!input.trim()) return;
 
@@ -56,63 +97,46 @@ export default function InterviewPage() {
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 min-h-screen">
+    <div className="flex justify-between min-h-screen">
       {/* Camera + User Preview */}
-      <div className="bg-black flex items-center justify-center p-6 relative">
+      <div className="bg-black flex flex-col w-full items-center justify-center p-6 relative">
+        <div className=" w-full h-full flex justify-between items-center">
+           <div className=" text-primary font-semibold flex gap-2"><Eye/> You are under observation</div>
+           <Badge className=" px-3 py-1">{status}</Badge>
+        </div>
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted
-          className="rounded-xl w-full max-w-md aspect-video border border-white/20"
+          className="rounded-xl w-full aspect-video border"
         />
         {!hasMedia && (
           <div className="absolute text-white text-center text-sm">
             Please allow camera & mic access to continue.
           </div>
         )}
+        <div className=" p-3"> 
+           <Button className=" bg-red-700 w-20"><PhoneCall className=" text-white"/></Button>
+        </div>
       </div>
 
       {/* AI + Chat Interface */}
-      <div className="flex flex-col p-6 gap-4 bg-muted/40 backdrop-blur-xl">
+      <div className="flex flex-col w-1/2 p-6 gap-4 bg-muted/40 backdrop-blur-xl">
         <div className="flex items-center gap-3 mb-2">
           <Bot className="text-primary" />
           <h2 className="text-lg font-semibold">AI Interview Assistant</h2>
         </div>
 
         <Card className="flex-1 overflow-y-auto max-h-[500px] p-4 space-y-3">
-          {messages.map((msg, idx) => (
-            <div
-              key={idx}
-              className={`flex ${
-                msg.from === "user" ? "justify-end" : "justify-start"
-              }`}
-            >
-              <div
-                className={`rounded-lg px-4 py-2 text-sm max-w-sm ${
-                  msg.from === "user"
-                    ? "bg-primary text-white"
-                    : "bg-muted text-foreground"
-                }`}
-              >
-                {msg.text}
-              </div>
+          {conversation.map((msg, idx) => (
+            <div className=" flex flex-col gap-2">
+              {msg.agent && <div className="text-primary text-sm flex gap-2"> <Bot className="text-primary size-15" />{msg.agent}</div>}
+              <Separator/>
+              {msg.candidate && <div className="text-white text-sm flex gap-2"><User2 className=" text-white size-5" />{msg.candidate}</div>}
             </div>
           ))}
         </Card>
-
-        {/* Message input */}
-        <div className="flex items-center gap-2">
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your answer or message..."
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
-          />
-          <Button type="button" onClick={handleSend}>
-            <SendHorizonal className="w-4 h-4" />
-          </Button>
-        </div>
       </div>
     </div>
   );

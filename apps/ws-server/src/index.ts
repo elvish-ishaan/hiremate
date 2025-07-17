@@ -6,6 +6,7 @@ import { parse } from 'url';
 import { cleanAndParseJson } from './lib/auxOps';
 
 enum STATUS {
+  PING = "ping",
   START = "start",
   ONGOING = 'ongoing',
   FINISHED = 'finished'  
@@ -19,7 +20,7 @@ interface IncomingDataProps {
   sessionId?: string;
 }
 
-const wss = new WebSocketServer({ port: 8080 });
+const wss = new WebSocketServer({ port: 5000 });
 
 wss.on('connection', async (ws, req) => {
   ws.on('error', console.error);
@@ -30,32 +31,41 @@ wss.on('connection', async (ws, req) => {
   const portalId = query.portalId as string;
   const userId = query.userId as string;
 
-  if (!portalId || !userId) return;
+  if (!portalId || !userId) {
+    console.log("Missing portalId or userId");
+    return;
+  };
 
   const portal = await prisma.portal.findFirst({ where: { id: portalId } });
-  if (!portal) return;
-
-  // Start with initial system question
-  const initialResponse = await agent.models.generateContent({
-    model: "gemini-2.0-flash",
-    contents: "Begin the interview now",
-    config: {
-      systemInstruction: getSystemPrompt(portal),
-    },
-  });
-
-  const initialParsed = cleanAndParseJson(initialResponse.text as string);
-  ws.send(JSON.stringify({
-    status: initialParsed.status ,
-    question: initialParsed.question,
-  }));
+  if (!portal) {
+    console.log("Portal not found");
+    return;
+  };
 
   //listen for the incomming messages
   ws.on('message', async (data) => {
+    console.log(JSON.parse(data.toString()),'getting data ws...........')
     try {
       const parsedData: IncomingDataProps = JSON.parse(data.toString());
 
       switch (parsedData.status) {
+        case STATUS.PING: {
+          // Start with initial system question
+          const initialResponse = await agent.models.generateContent({
+            model: "gemini-2.0-flash",
+            contents: "Begin the interview now",
+            config: {
+              systemInstruction: getSystemPrompt(portal),
+            },
+          });
+        
+          const initialParsed = cleanAndParseJson(initialResponse.text as string);
+          ws.send(JSON.stringify({
+            status: initialParsed.status ,
+            question: initialParsed.question,
+          }));
+          break;
+        }
         case STATUS.START: {
           const questionAnswerPair = {
             question: parsedData.question!,
