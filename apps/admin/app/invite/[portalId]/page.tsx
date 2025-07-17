@@ -8,6 +8,8 @@ import { SendHorizonal, Bot, PhoneCall, User2, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { MicVAD } from "@ricky0123/vad-web"
+
 
 enum InterviewStatus {
     PING = "ping",
@@ -34,6 +36,9 @@ export default function InterviewPage() {
   const [latestQuestion, setLatestQuestion] = useState<string>("");
   const [conversation, setConversation] = useState<Conversation[]>([]);
   const [audioBuffer, setAudioBuffer] = useState<Blob | null>(null);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [recordedChunks, setRecordedChunks] = useState<Float32Array[]>([]);
+  const [webSocket, setWebSocket] = useState<WebSocket | null>(null);
 
   useEffect(() => {
     const initMedia = async () => {
@@ -63,8 +68,22 @@ export default function InterviewPage() {
       console.log("WebSocket connection established.");
       //send the ping message on server
       socket.send(JSON.stringify({ status: InterviewStatus.PING }));
+      //set the socket state
+      setWebSocket(socket);
     };
-    socket.onmessage = (event) => {
+    socket.onclose = (event) => {
+      //clear the socket state
+      setWebSocket(null);
+      console.log("WebSocket connection closed:", event.code, event.reason);
+    };
+    return () => {
+      socket.close();
+    };
+  }, []);
+
+  //listen for the incoming messages
+  if(!webSocket) return;
+  webSocket.onmessage = (event) => {
       console.log('recve...............')
       const data = JSON.parse(event.data);
       console.log("Received message from server:", data);
@@ -79,24 +98,26 @@ export default function InterviewPage() {
       setAudioBuffer(blob);
       
     };
-    socket.onclose = (event) => {
-      console.log("WebSocket connection closed:", event.code, event.reason);
-    };
-    return () => {
-      socket.close();
-    };
-  }, []);
 
-  //play the audio when ever the auido buffer changes
-  useEffect(() => {
-    if (audioBuffer) {
-      console.log("playing audio.......");
-      const audio = new Audio(URL.createObjectURL(new Blob([audioBuffer])));
-      audio.play();
-    }
-  }, [audioBuffer]);
-
-  
+  //init the audio
+  const initAudio = async () => {
+    //check if question is empty
+    if(!latestQuestion) return
+    const myvad = await MicVAD.new({
+    
+    onSpeechEnd: (audio: Float32Array) => {
+       setRecordedChunks([...recordedChunks, audio])
+       //send the audio to server to get text back
+       webSocket.send(JSON.stringify({ 
+        status: status,
+        answer: audio,
+        question: latestQuestion,
+        }));
+    },
+})
+myvad.start()
+  }
+  initAudio()
 
 
   return (

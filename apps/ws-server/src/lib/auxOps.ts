@@ -1,3 +1,7 @@
+import { agent } from "../agent/agentClient";
+import { fromByteArray } from 'base64-js';
+
+
 export function cleanAndParseJson<T = any>(raw: string): T | null {
   try {
     const cleaned = raw
@@ -36,4 +40,39 @@ export function encodeWAV(pcmData: Buffer, sampleRate = 24000, numChannels = 1, 
 
   return Buffer.concat([header, pcmData]);
 }
+
+//transcribe audio to text
+export async function transcribeAudio(audioBuffer: Blob) {
+  console.log(audioBuffer,'getting audioi init...........')
+  try {
+    //convert the audio to base64
+  const base64AudioFile = fromByteArray(new Uint8Array(audioBuffer));
+  console.log(base64AudioFile,'getting convert to base64.............')
+
+  //call the llm api to transcribe the audio
+const contents = [
+  { text: "Give me the transcript of this audio file." },
+  {
+    inlineData: {
+      mimeType: "audio/mp3",
+      data: base64AudioFile,
+    },
+  },
+];
+
+const response = await agent.models.generateContent({
+  model: "gemini-2.5-flash",
+  contents: contents,
+});
+console.log(response.text);
+return response.text;
+  } catch (error) {
+    console.log(error,'error in transcribing audio')
+    return null
+  }
+}
+
+
+
+
 

@@ -3,7 +3,7 @@ import { WebSocketServer } from 'ws';
 import { agent } from './agent/agentClient';
 import getSystemPrompt, { generateScoringPrompt } from './lib/prompts';
 import { parse } from 'url';
-import { cleanAndParseJson, encodeWAV } from './lib/auxOps';
+import { cleanAndParseJson, encodeWAV, transcribeAudio } from './lib/auxOps';
 
 enum STATUS {
   PING = "ping",
@@ -18,6 +18,7 @@ interface IncomingDataProps {
   answer: string;
   question?: string;
   sessionId?: string;
+  questionBuffer?: Blob;
 }
 
 const wss = new WebSocketServer({ port: 5000 });
@@ -86,9 +87,16 @@ wss.on('connection', async (ws, req) => {
           break;
         }
         case STATUS.START: {
+          //convert the audio to text
+          const answerText = await transcribeAudio(parsedData.questionBuffer!);
+          if(!answerText){
+            console.log('no answer text found')
+            return
+          }
+
           const questionAnswerPair = {
             question: parsedData.question!,
-            answer: parsedData.answer,
+            answer: answerText,
           };
 
           const scoreResponse = await agent.models.generateContent({
@@ -139,13 +147,19 @@ wss.on('connection', async (ws, req) => {
         }
 
         case STATUS.ONGOING: {
+          //convert the audio to text
+          const answerText = await transcribeAudio(parsedData.questionBuffer!);
+          if(!answerText){
+            console.log('no answer text found')
+            return
+          }
           const scoreResponse = await agent.models.generateContent({
             model: "gemini-2.0-flash",
             contents: 'Generate the response',
             config: {
               systemInstruction: generateScoringPrompt({
                 question: parsedData.question!,
-                answer: parsedData.answer,
+                answer: answerText,
               }),
             },
           });
