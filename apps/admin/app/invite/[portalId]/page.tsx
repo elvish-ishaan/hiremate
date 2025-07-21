@@ -20,17 +20,11 @@ enum InterviewStatus {
 
 interface Conversation {
   agent: string;
-  candidate?: string;
 }
 
 export default function InterviewPage() {
   const { portalId } = useParams();
   const videoRef = useRef<HTMLVideoElement>(null);
-
-  const [messages, setMessages] = useState<{ from: "ai" | "user"; text: string }[]>([
-    { from: "ai", text: "Welcome to your AI interview! Ready to begin?" },
-  ]);
-  const [input, setInput] = useState("");
   const [hasMedia, setHasMedia] = useState(false);
   const [status, setStatus] = useState<InterviewStatus>(InterviewStatus.PING);
   const [latestQuestion, setLatestQuestion] = useState<string>("");
@@ -88,15 +82,12 @@ export default function InterviewPage() {
       const data = JSON.parse(event.data);
       console.log("Received message from server:", data);
       setStatus(data.status);
-      
       setLatestQuestion(data.question);
-      setConversation([...conversation, { agent: data.question, candidate: "yeah i can tell you"}])
+      setConversation([...conversation, { agent: data.question}])
       const buffer = new Uint8Array(data.questionBuffer?.data);
       // Create a blob from it
       const blob = new Blob([buffer], { type: 'audio/wav' });
-      console.log(blob)
       setAudioBuffer(blob);
-      
     };
 
   //init the audio
@@ -104,7 +95,10 @@ export default function InterviewPage() {
     //check if question is empty
     if(!latestQuestion) return
     const myvad = await MicVAD.new({
-    
+    positiveSpeechThreshold: 0.8,
+    negativeSpeechThreshold: 0.2,
+    submitUserSpeechOnPause: true,
+    model: "v5",
     onSpeechEnd: (audio: Float32Array) => {
        setRecordedChunks([...recordedChunks, audio])
        //send the audio to server to get text back
@@ -114,9 +108,12 @@ export default function InterviewPage() {
         question: latestQuestion,
         }));
     },
-})
-myvad.start()
+    });
+  
+  //start the listening 
+  myvad.start()
   }
+
   initAudio()
 
 
@@ -156,9 +153,7 @@ myvad.start()
           {conversation.map((msg, idx) => (
             <div className=" flex flex-col gap-2">
               {msg.agent && <div className="text-primary text-sm flex gap-2"> <Bot className="text-primary size-15" />{msg.agent}</div>}
-              <Separator/>
-              {msg.candidate && <div className="text-white text-sm flex gap-2"><User2 className=" text-white size-5" />{msg.candidate}</div>}
-            </div>
+              </div>
           ))}
         </Card>
       </div>

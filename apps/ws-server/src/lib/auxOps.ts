@@ -1,5 +1,7 @@
 import { agent } from "../agent/agentClient";
 import { fromByteArray } from 'base64-js';
+import { trailEncoding } from "./trails";
+import fs from 'fs'
 
 
 export function cleanAndParseJson<T = any>(raw: string): T | null {
@@ -41,21 +43,98 @@ export function encodeWAV(pcmData: Buffer, sampleRate = 24000, numChannels = 1, 
   return Buffer.concat([header, pcmData]);
 }
 
-//transcribe audio to text
-export async function transcribeAudio(audioBuffer: Blob) {
-  console.log(audioBuffer,'getting audioi init...........')
+
+//convert obj to float32 array
+export function objectToFloat32Array(obj: Record<string, number>): Float32Array {
   try {
-    //convert the audio to base64
-  const base64AudioFile = fromByteArray(new Uint8Array(audioBuffer));
-  console.log(base64AudioFile,'getting convert to base64.............')
+    const keys = Object.keys(obj).map(Number).sort((a, b) => a - b);
+  const result = new Float32Array(keys.length);
+
+  keys.forEach((key, i) => {
+    const value = obj[key.toString()];
+    result[i] = typeof value === "number" ? value : 0; // or throw error
+  });
+
+  return result;
+  } catch (error) {
+    console.log(error,'error in converting object to float32 array');
+  }
+}
+
+
+
+
+export function float32ToWavBase64(float32Array: Float32Array, sampleRate = 16000): string {
+  try {
+    const numChannels = 1;
+  const bytesPerSample = 2;
+  const blockAlign = numChannels * bytesPerSample;
+  const byteRate = sampleRate * blockAlign;
+  const wavHeaderSize = 44;
+  const dataLength = float32Array.length * bytesPerSample;
+  const buffer = new ArrayBuffer(wavHeaderSize + dataLength);
+  const view = new DataView(buffer);
+
+  // Write WAV header
+  let offset = 0;
+  const writeString = (s: string) => {
+    for (let i = 0; i < s.length; i++) {
+      view.setUint8(offset++, s.charCodeAt(i));
+    }
+  };
+
+  writeString('RIFF');                    // ChunkID
+  view.setUint32(offset, 36 + dataLength, true); offset += 4; // ChunkSize
+  writeString('WAVE');                    // Format
+  writeString('fmt ');                    // Subchunk1ID
+  view.setUint32(offset, 16, true); offset += 4;              // Subchunk1Size
+  view.setUint16(offset, 1, true); offset += 2;               // AudioFormat (PCM)
+  view.setUint16(offset, numChannels, true); offset += 2;     // NumChannels
+  view.setUint32(offset, sampleRate, true); offset += 4;      // SampleRate
+  view.setUint32(offset, byteRate, true); offset += 4;        // ByteRate
+  view.setUint16(offset, blockAlign, true); offset += 2;      // BlockAlign
+  view.setUint16(offset, bytesPerSample * 8, true); offset += 2; // BitsPerSample
+  writeString('data');                    // Subchunk2ID
+  view.setUint32(offset, dataLength, true); offset += 4;      // Subchunk2Size
+
+  // PCM samples (float → int16)
+  for (let i = 0; i < float32Array.length; i++, offset += 2) {
+    let s = Math.max(-1, Math.min(1, float32Array[i]));
+    view.setInt16(offset, s < 0 ? s * 0x8000 : s * 0x7FFF, true);
+  }
+
+  const wavBytes = new Uint8Array(buffer);
+
+  // Base64 encode
+  const base64 = typeof window === 'undefined'
+    ? Buffer.from(wavBytes).toString('base64')
+    : btoa(String.fromCharCode(...wavBytes));
+
+  return base64;
+
+  } catch (error) {
+    console.log(error,'error in converting float32 to wav base64');
+    throw new Error("Error converting float32 to wav base64");
+  }
+}
+
+
+
+
+//transcribe audio to text
+export async function transcribeAudio(rawAns: any) {
+  try {
+    //convert the audio to suitable format
+    const ansArr = objectToFloat32Array(rawAns as any);
+    const base64AudioEncodedData = float32ToWavBase64(ansArr);
 
   //call the llm api to transcribe the audio
 const contents = [
   { text: "Give me the transcript of this audio file." },
   {
     inlineData: {
-      mimeType: "audio/mp3",
-      data: base64AudioFile,
+      mimeType: "audio/wav",
+      data: base64AudioEncodedData,
     },
   },
 ];
@@ -68,9 +147,16 @@ console.log(response.text);
 return response.text;
   } catch (error) {
     console.log(error,'error in transcribing audio')
-    return null
+    throw new Error("error in transcribing audio from llm");
   }
 }
+
+
+
+
+
+
+
 
 
 

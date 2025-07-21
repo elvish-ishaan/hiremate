@@ -3,7 +3,7 @@ import { WebSocketServer } from 'ws';
 import { agent } from './agent/agentClient';
 import getSystemPrompt, { generateScoringPrompt } from './lib/prompts';
 import { parse } from 'url';
-import { cleanAndParseJson, encodeWAV, transcribeAudio } from './lib/auxOps';
+import { bufferTollmFormat, cleanAndParseJson, encodeWAV, objectToFloat32Array, transcribeAudio } from './lib/auxOps';
 
 enum STATUS {
   PING = "ping",
@@ -45,9 +45,9 @@ wss.on('connection', async (ws, req) => {
 
   //listen for the incomming messages
   ws.on('message', async (data) => {
-    console.log(JSON.parse(data.toString()),'getting data ws...........')
     try {
       const parsedData: IncomingDataProps = JSON.parse(data.toString());
+      console.log('message, rec')
 
       switch (parsedData.status) {
         case STATUS.PING: {
@@ -78,6 +78,7 @@ wss.on('connection', async (ws, req) => {
           const data = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
           const rawPcmBuffer = Buffer.from(data, 'base64');
           const wavBuffer = encodeWAV(rawPcmBuffer);
+          console.log(wavBuffer, 'getting question buffer');
 
           ws.send(JSON.stringify({
             questionBuffer: wavBuffer,
@@ -87,8 +88,8 @@ wss.on('connection', async (ws, req) => {
           break;
         }
         case STATUS.START: {
-          //convert the audio to text
-          const answerText = await transcribeAudio(parsedData.questionBuffer!);
+          //convert the audio to text and transcribe it
+          const answerText = await transcribeAudio(parsedData.answer);
           if(!answerText){
             console.log('no answer text found')
             return
@@ -148,7 +149,7 @@ wss.on('connection', async (ws, req) => {
 
         case STATUS.ONGOING: {
           //convert the audio to text
-          const answerText = await transcribeAudio(parsedData.questionBuffer!);
+          const answerText = await transcribeAudio(parsedData.answer);
           if(!answerText){
             console.log('no answer text found')
             return
@@ -172,7 +173,7 @@ wss.on('connection', async (ws, req) => {
               conversation: {
                 create: {
                   question: parsedData.question!,
-                  answer: parsedData.answer,
+                  answer: parsedScore.answer,
                   score: parsedScore.score,
                 },
               },
