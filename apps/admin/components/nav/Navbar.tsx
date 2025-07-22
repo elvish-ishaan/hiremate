@@ -1,29 +1,48 @@
-"use client"
+"use client";
 
-import React from 'react'
-import { ThemeToggle } from '../ThemeToggle'
-import { Button } from '../ui/button'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation';
+import React from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ThemeToggle } from "../ThemeToggle";
+import { Button } from "../ui/button";
 
 const Navbar = () => {
   const router = useRouter();
 
   return (
-    <div className=' flex justify-between items-center my-5 mx-10 bg-white/10 backdrop-blur-xs border border-white/20 shadow-lg rounded-md px-5 py-3'>
-        <div className=' text-primary text-xl font-medium'>Hiremate</div>
-        <div className=' text-primary flex gap-3'>
-          <Link href={"#"}>Solutions</Link>
-          <Link href={"#"}>Products</Link>
-          <Link href={"#"}>Pricing</Link>
-        </div>
-        <div className=' flex gap-3'>
-            <ThemeToggle />
-            <Button onClick={ () => router.push('/auth/login')} className=' bg-primary'>Login</Button>
-            <Button onClick={ () => router.push('/auth/register')} className=' bg-secondary'>Register</Button>
-        </div>
-    </div>
-  )
-}
+    <header className="sticky top-4 z-50 w-[95%] mx-auto rounded-xl border border-white/10 bg-white/5 backdrop-blur-md shadow-lg px-6 py-4 flex items-center justify-between">
+      {/* Logo */}
+      <Link href="/" className="text-2xl font-semibold text-white hover:text-primary transition">
+        Hiremate
+      </Link>
 
-export default Navbar
+      {/* Nav Links */}
+      <nav className="hidden md:flex items-center gap-6 text-sm font-medium text-white/80">
+        <Link href="#" className="hover:text-white transition">Solutions</Link>
+        <Link href="#" className="hover:text-white transition">Products</Link>
+        <Link href="#" className="hover:text-white transition">Pricing</Link>
+      </nav>
+
+      {/* Actions */}
+      <div className="flex items-center gap-3">
+        <ThemeToggle />
+        <Button
+          variant="outline"
+          onClick={() => router.push("/auth/login")}
+          className="border-white/20 text-white hover:bg-white/10"
+        >
+          Login
+        </Button>
+        <Button
+          variant="default"
+          onClick={() => router.push("/auth/register")}
+          className="bg-primary text-white hover:bg-primary/80"
+        >
+          Register
+        </Button>
+      </div>
+    </header>
+  );
+};
+
+export default Navbar;

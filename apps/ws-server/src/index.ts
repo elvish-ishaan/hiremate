@@ -78,7 +78,6 @@ wss.on('connection', async (ws, req) => {
           const data = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
           const rawPcmBuffer = Buffer.from(data, 'base64');
           const wavBuffer = encodeWAV(rawPcmBuffer);
-          console.log(wavBuffer, 'getting question buffer');
 
           ws.send(JSON.stringify({
             questionBuffer: wavBuffer,
@@ -137,9 +136,26 @@ wss.on('connection', async (ws, req) => {
           });
           //clean and parced the next question data
           const parsedNextQuestion = cleanAndParseJson(nextQuestion.text as string);
-          console.log(parsedNextQuestion,'parsed next question');
+          //generate the audio of the text
+          const response = await agent.models.generateContent({
+             model: "gemini-2.5-flash-preview-tts",
+             contents: [{ parts: [{ text: parsedNextQuestion.question }] }],
+             config: {
+                   responseModalities: ['AUDIO'],
+                   speechConfig: {
+                      voiceConfig: {
+                         prebuiltVoiceConfig: { voiceName: 'Gacrux' },
+                      },
+                   },
+             },
+          });
+       
+          const data = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+          const rawPcmBuffer = Buffer.from(data, 'base64');
+          const wavBuffer = encodeWAV(rawPcmBuffer);
 
           ws.send(JSON.stringify({
+            questionBuffer: wavBuffer,
             status: parsedNextQuestion.status,
             question: parsedNextQuestion.question,
             sessionId: session.id,
@@ -194,8 +210,27 @@ wss.on('connection', async (ws, req) => {
           });
 
           const parsedNext = cleanAndParseJson(nextQuestion.text as string);
+          //generate the audio of the text
+          const response = await agent.models.generateContent({
+             model: "gemini-2.5-flash-preview-tts",
+             contents: [{ parts: [{ text: parsedNext.question }] }],
+             config: {
+                   responseModalities: ['AUDIO'],
+                   speechConfig: {
+                      voiceConfig: {
+                         prebuiltVoiceConfig: { voiceName: 'Gacrux' },
+                      },
+                   },
+             },
+          });
+       
+          const data = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+          const rawPcmBuffer = Buffer.from(data, 'base64');
+          const wavBuffer = encodeWAV(rawPcmBuffer);
+
 
           ws.send(JSON.stringify({
+            questionBuffer: wavBuffer,
             status: parsedNext.status,
             question: parsedNext.question,
           }));

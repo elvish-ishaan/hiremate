@@ -1,7 +1,9 @@
 
 import "@/app/globals.css"; 
 import Feature from "@/components/Landing/Feature";
+import Footer from "@/components/Landing/Footer";
 import Hero from "@/components/Landing/Hero";
+import Testimonials from "@/components/Landing/Testimonials";
 import { FlickeringGrid } from "@/components/magicui/flickering-grid";
 import Navbar from "@/components/nav/Navbar";
 
@@ -21,7 +23,10 @@ const Home = () => {
         <Hero/>
       </div>
       <Feature/>
+      <Testimonials/>
+      <Footer/>
     </div>
+    
   )
 }
 

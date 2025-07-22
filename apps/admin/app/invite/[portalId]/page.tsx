@@ -4,22 +4,30 @@ import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { SendHorizonal, Bot, PhoneCall, User2, Eye } from "lucide-react";
+import { Bot, PhoneCall, Eye } from "lucide-react";
 import { toast } from "sonner";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { MicVAD } from "@ricky0123/vad-web"
-
+import { MicVAD } from "@ricky0123/vad-web";
 
 enum InterviewStatus {
-    PING = "ping",
-    START = "start",
-    ONGOING = 'ongoing',
-    FINISHED = 'finished'
+  PING = "ping",
+  START = "start",
+  ONGOING = "ongoing",
+  FINISHED = "finished",
 }
 
 interface Conversation {
   agent: string;
+}
+
+// Helper to hash audio chunks
+function hashFloat32Array(arr: Float32Array): string {
+  let hash = 0;
+  for (let i = 0; i < arr.length; i++) {
+    hash = ((hash << 5) - hash) + Math.floor(arr[i] * 100000);
+    hash |= 0;
+  }
+  return hash.toString();
 }
 
 export default function InterviewPage() {
@@ -30,17 +38,15 @@ export default function InterviewPage() {
   const [latestQuestion, setLatestQuestion] = useState<string>("");
   const [conversation, setConversation] = useState<Conversation[]>([]);
   const [audioBuffer, setAudioBuffer] = useState<Blob | null>(null);
-  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
-  const [recordedChunks, setRecordedChunks] = useState<Float32Array[]>([]);
   const [webSocket, setWebSocket] = useState<WebSocket | null>(null);
+  const [sessionId, setSessionId] = useState<string>("");
+  const userId = "258ff316-ea42-49a7-83cf-9a36e6897bc6";
 
+  // Setup camera & mic
   useEffect(() => {
     const initMedia = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-          audio: true,
-        });
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
@@ -50,80 +56,100 @@ export default function InterviewPage() {
         setHasMedia(false);
       }
     };
-
     initMedia();
   }, []);
 
-  const userId = "258ff316-ea42-49a7-83cf-9a36e6897bc6"
-  //init the websocker connection 
+  // Init WebSocket connection
   useEffect(() => {
     const socket = new WebSocket(`ws://localhost:5000?portalId=${portalId}&userId=${userId}`);
     socket.onopen = () => {
       console.log("WebSocket connection established.");
-      //send the ping message on server
       socket.send(JSON.stringify({ status: InterviewStatus.PING }));
-      //set the socket state
       setWebSocket(socket);
     };
     socket.onclose = (event) => {
-      //clear the socket state
       setWebSocket(null);
-      console.log("WebSocket connection closed:", event.code, event.reason);
+      console.log("WebSocket closed:", event.code, event.reason);
     };
-    return () => {
-      socket.close();
-    };
-  }, []);
+    return () => socket.close();
+  }, [portalId]);
 
-  //listen for the incoming messages
-  if(!webSocket) return;
-  webSocket.onmessage = (event) => {
-      console.log('recve...............')
+  // Handle WebSocket messages
+  useEffect(() => {
+    if (!webSocket) return;
+
+    const handleMessage = (event: MessageEvent) => {
       const data = JSON.parse(event.data);
-      console.log("Received message from server:", data);
+      console.log("Received message:", data);
+
+      if (data.sessionId) setSessionId(data.sessionId);
       setStatus(data.status);
       setLatestQuestion(data.question);
-      setConversation([...conversation, { agent: data.question}])
-      const buffer = new Uint8Array(data.questionBuffer?.data);
-      // Create a blob from it
-      const blob = new Blob([buffer], { type: 'audio/wav' });
+      setConversation((prev) => [...prev, { agent: data.question }]);
+
+      const buffer = new Uint8Array(data.questionBuffer?.data || []);
+      const blob = new Blob([buffer], { type: "audio/wav" });
       setAudioBuffer(blob);
     };
 
-  //init the audio
-  const initAudio = async () => {
-    //check if question is empty
-    if(!latestQuestion) return
-    const myvad = await MicVAD.new({
-    positiveSpeechThreshold: 0.8,
-    negativeSpeechThreshold: 0.2,
-    submitUserSpeechOnPause: true,
-    model: "v5",
-    onSpeechEnd: (audio: Float32Array) => {
-       setRecordedChunks([...recordedChunks, audio])
-       //send the audio to server to get text back
-       webSocket.send(JSON.stringify({ 
-        status: status,
-        answer: audio,
-        question: latestQuestion,
-        }));
-    },
-    });
-  
-  //start the listening 
-  myvad.start()
-  }
+    webSocket.addEventListener("message", handleMessage);
+    return () => webSocket.removeEventListener("message", handleMessage);
+  }, [webSocket]);
 
-  initAudio()
+  // Play incoming audio
+  useEffect(() => {
+    if (audioBuffer) {
+      const audio = new Audio(URL.createObjectURL(audioBuffer));
+      audio.play();
+    }
+  }, [audioBuffer]);
 
+  // Initialize VAD per new question
+  useEffect(() => {
+    if (!latestQuestion) return;
+
+    const initAudio = async () => {
+      const myvad = await MicVAD.new({
+        model: "v5",
+        positiveSpeechThreshold: 0.65,
+        negativeSpeechThreshold: 0.25,
+        redemptionFrames: 30,
+        preSpeechPadFrames: 3,
+        minSpeechFrames: 10,
+        submitUserSpeechOnPause: true,
+        onSpeechEnd: (audio: Float32Array) => {
+          let count = 1;
+          console.log(audio,'getting audio time:', count);
+          count++;
+          
+          if (webSocket && webSocket.readyState === WebSocket.OPEN) {
+            webSocket.send(
+              JSON.stringify({
+                status,
+                answer: audio,
+                question: latestQuestion,
+                sessionId,
+              })
+            );
+          }
+        },
+      });
+
+       myvad.start();
+    };
+
+    initAudio();
+  }, [latestQuestion, webSocket]);
 
   return (
     <div className="flex justify-between min-h-screen">
       {/* Camera + User Preview */}
       <div className="bg-black flex flex-col w-full items-center justify-center p-6 relative">
-        <div className=" w-full h-full flex justify-between items-center">
-           <div className=" text-primary font-semibold flex gap-2"><Eye/> You are under observation</div>
-           <Badge className=" px-3 py-1">{status}</Badge>
+        <div className="w-full h-full flex justify-between items-center">
+          <div className="text-primary font-semibold flex gap-2">
+            <Eye /> You are under observation
+          </div>
+          <Badge className="px-3 py-1">{status}</Badge>
         </div>
         <video
           ref={videoRef}
@@ -137,8 +163,10 @@ export default function InterviewPage() {
             Please allow camera & mic access to continue.
           </div>
         )}
-        <div className=" p-3"> 
-           <Button className=" bg-red-700 w-20"><PhoneCall className=" text-white"/></Button>
+        <div className="p-3">
+          <Button className="bg-red-700 w-20">
+            <PhoneCall className="text-white" />
+          </Button>
         </div>
       </div>
 
@@ -148,12 +176,16 @@ export default function InterviewPage() {
           <Bot className="text-primary" />
           <h2 className="text-lg font-semibold">AI Interview Assistant</h2>
         </div>
-
         <Card className="flex-1 overflow-y-auto max-h-[500px] p-4 space-y-3">
           {conversation.map((msg, idx) => (
-            <div className=" flex flex-col gap-2">
-              {msg.agent && <div className="text-primary text-sm flex gap-2"> <Bot className="text-primary size-15" />{msg.agent}</div>}
-              </div>
+            <div key={idx} className="flex flex-col gap-2">
+              {msg.agent && (
+                <div className="text-primary text-sm flex gap-2">
+                  <Bot className="text-primary size-15" />
+                  {msg.agent}
+                </div>
+              )}
+            </div>
           ))}
         </Card>
       </div>

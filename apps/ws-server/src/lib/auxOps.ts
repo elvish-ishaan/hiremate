@@ -2,6 +2,7 @@ import { agent } from "../agent/agentClient";
 import { fromByteArray } from 'base64-js';
 import { trailEncoding } from "./trails";
 import fs from 'fs'
+import { transcriberSystemPrompt } from "./prompts";
 
 
 export function cleanAndParseJson<T = any>(raw: string): T | null {
@@ -130,7 +131,7 @@ export async function transcribeAudio(rawAns: any) {
 
   //call the llm api to transcribe the audio
 const contents = [
-  { text: "Give me the transcript of this audio file." },
+  { text: "generate the output" },
   {
     inlineData: {
       mimeType: "audio/wav",
@@ -142,6 +143,9 @@ const contents = [
 const response = await agent.models.generateContent({
   model: "gemini-2.5-flash",
   contents: contents,
+  config: {
+    systemInstruction: transcriberSystemPrompt,
+  }
 });
 console.log(response.text);
 return response.text;
