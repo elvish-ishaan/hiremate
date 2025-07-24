@@ -6,13 +6,40 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
-  Building2,
   LayoutDashboard,
   Settings,
   LogOut,
   ReceiptEuro,
+  Home,
 } from "lucide-react";
 import { toast } from "sonner";
+
+const sidebarLinks = [
+  {
+    id: 1,
+    name: "Dashboard",
+    icon: <Home/>,
+    href: "/dashboard",
+  },
+  {
+    id: 3,
+    name: "Portals",
+    icon: <LayoutDashboard/>,
+    href: "/portals",
+  },
+  {
+    id: 5,
+    name: "Reports",
+    icon: <ReceiptEuro/>,
+    href: "/reports",
+  },
+  {
+    id: 4,
+    name: "Settings",
+    icon: <Settings/>,
+    href: "/settings",
+  },
+]
 
 const Sidebar = () => {
   const router = useRouter();
@@ -30,10 +57,9 @@ const Sidebar = () => {
       <div>
         <h1 className="text-2xl font-bold text-primary mb-6">HireMate</h1>
         <nav className="space-y-2">
-          <SidebarLink href="/dashboard/organizations" icon={<Building2 size={18} />} label="Organizations" />
-          <SidebarLink href="/dashboard/portals" icon={<LayoutDashboard size={18} />} label="Portals" />
-          <SidebarLink href="/dashboard/settings" icon={<Settings size={18} />} label="Settings" />
-           <SidebarLink href="/dashboard/reports" icon={<ReceiptEuro size={18} />} label="Reports" />
+          {sidebarLinks.map((link) => (
+            <SidebarLink key={link.id} href={link.href} icon={link.icon} label={link.name} />
+          ))}
 
         </nav>
       </div>
