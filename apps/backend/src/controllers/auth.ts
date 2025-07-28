@@ -12,6 +12,9 @@ export const login = async (req: Request, res: Response) => {
            const user = await prisma.user.findUnique({
                where: {
                    email: req.body.email
+               },
+               include:{
+                organizations: true
                }
            })
            if (!user) {
@@ -37,12 +40,13 @@ export const login = async (req: Request, res: Response) => {
                name: user.name
            }
            const token = jwt.sign(tokenData, process.env.JWT_SECRET as string, {
-               expiresIn: "1h"
+               expiresIn: "12h"
            })
            res.status(200).json({
                success: true,
                message: "user logged in successfully",
-               token: token
+               token: token,
+               user: user
            })  
            return 
         } catch (error) {

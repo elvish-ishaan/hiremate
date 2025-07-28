@@ -1,5 +1,3 @@
-
-
 generator client {
   provider = "prisma-client-js"
   output   = "../generated/prisma"
@@ -12,61 +10,63 @@ datasource db {
 
 //user model
 model User {
-  id        String      @id @default(uuid())
-  email     String   @unique
-  name      String
-  password  String?
+  id            String         @id @default(uuid())
+  email         String         @unique
+  name          String
+  password      String?
   organizations Organization[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt @default(now())
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @default(now()) @updatedAt
+  Session       Session[]
 }
 
 //org model
 model Organization {
-  id        String      @id @default(uuid())
+  id        String   @id @default(uuid())
   name      String
   logo      String?
   portals   Portal[]
-  user      User        @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
   userId    String
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 }
 
 //job portal model
 model Portal {
-  id        String      @id @default(uuid())
-  title      String
-  description String?
-  role       String
+  id             String       @id @default(uuid())
+  title          String
+  description    String?
+  role           String
   skillsRequired String[]
-  candidates  String[]
-  jobType     String
-  department  String
-  organization Organization @relation(fields: [organizationId], references: [id])
+  candidates     String[]
+  jobType        String
+  department     String
+  organization   Organization @relation(fields: [organizationId], references: [id])
   organizationId String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt @default(now())
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @default(now()) @updatedAt
 }
 
 //session model
 model Session {
-  id        String      @id @default(uuid())
-  portalId  String
-  userId    String
+  id           String         @id @default(uuid())
+  portalId     String
+  user         User           @relation(fields: [userId], references: [id])
+  userId       String
   conversation Conversation[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt @default(now())
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @default(now()) @updatedAt
 }
 
 //conversation model
 model Conversation {
-  id        String      @id @default(uuid())
-  session   Session @relation(fields: [sessionId], references: [id])
+  id        String   @id @default(uuid())
+  session   Session  @relation(fields: [sessionId], references: [id])
   sessionId String
-  question  String 
+  question  String
   answer    String
-  score     Int @default(0)
+  score     Int      @default(0)
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 }

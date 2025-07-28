@@ -61,7 +61,7 @@ const Feature = () => {
     <div
   className="w-full flex flex-col items-center justify-center px-6 py-16
     bg-[linear-gradient(to_right,rgba(0,0,0,0.5),rgba(0,128,0,0.2))]
-    backdrop-blur-xl rounded-xl
+    backdrop-blur-xl 
     border border-white/15 shadow-[0_4px_30px_rgba(0,0,0,0.2)]"
 >
       <h1 className="text-3xl font-semibold text-primary text-center mb-10">

@@ -27,8 +27,9 @@ export default function LoginPage() {
     toast.success("Logged In")
     //save token to local storage
     localStorage.setItem("token", res.data.token)
+    localStorage.setItem("user", JSON.stringify(res.data.user))
     //redirect to home page
-    router.push("/")
+    router.push("/dashboard")
   };
 
   return (

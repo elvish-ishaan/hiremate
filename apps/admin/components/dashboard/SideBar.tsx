@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -41,8 +41,16 @@ const sidebarLinks = [
   },
 ]
 
+interface Organisation {
+  id: string
+  name: string
+  logo: string
+  createdAt?: string
+  updatedAt?: string
+}
 const Sidebar = () => {
   const router = useRouter();
+  const [organization, setOrganization] = useState<Organisation | null>(null) 
 
   const handleLogout = () => {
     //remove the token from local storage
@@ -51,11 +59,24 @@ const Sidebar = () => {
     router.push("/auth/login");
   };
 
+  useEffect(() => {
+      const {organizations} = JSON.parse(localStorage.getItem("user") as string)
+      setOrganization(organizations[0])
+  },[])
   return (
     <aside className="h-screen w-64 bg-white/10 backdrop-blur-lg border-r border-white/10 shadow-lg flex flex-col justify-between py-6 px-4">
       {/* Top Section: Title + Links */}
       <div>
         <h1 className="text-2xl font-bold text-primary mb-6">HireMate</h1>
+        <div className=" flex gap-2 px-2 py-4 items-center">
+           <div>
+             <img src={organization?.logo} alt="logo" className="w-8 h-8" />
+           </div>
+           <div className=" text-muted-foreground">
+             <div>{organization?.name}</div>
+           </div>
+        </div>
+        <Separator className=" mb-2"/>
         <nav className="space-y-2">
           {sidebarLinks.map((link) => (
             <SidebarLink key={link.id} href={link.href} icon={link.icon} label={link.name} />
