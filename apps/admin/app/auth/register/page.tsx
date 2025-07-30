@@ -9,15 +9,19 @@ import axios from "axios";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { API_URL } from "@/app/constant";
+import Loader from "@/components/loaders/loader";
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const router = useRouter()
+  const [loading, setLoading] = useState(false)
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    setLoading(true)
+
     try {
       const res = await axios.post(`${API_URL}/auth/register`, {
         name,
@@ -28,11 +32,15 @@ export default function RegisterPage() {
       if (!res.data.success) {
         toast.error(res.data.message);
       }
+      setLoading(false)
+
       toast.success("user created successfully, please login now");
       //redirect to login page
       router.push("/auth/login");
     } catch (error) {
       toast.error("something went wrong");
+    }finally{
+      setLoading(false)
     }
   };
 
@@ -55,7 +63,7 @@ export default function RegisterPage() {
 
           <form className="space-y-6" onSubmit={handleRegister}>
             <div className="gap-2">
-              <Label htmlFor="name">Name</Label>
+              <Label className=" my-2" htmlFor="name">Name</Label>
               <Input
                 id="name"
                 type="text"
@@ -67,7 +75,7 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label className=" my-2" htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -79,7 +87,7 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <Label htmlFor="password">Password</Label>
+              <Label className=" my-2" htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -90,8 +98,10 @@ export default function RegisterPage() {
               />
             </div>
 
-            <Button type="submit" className="w-full rounded-xl text-lg py-5">
-              Register
+            <Button
+            disabled={loading}
+             type="submit" className="w-full rounded-xl text-lg py-5">
+              { loading ? <Loader/> : "Register"}
             </Button>
 
             <p className="text-sm text-center text-gray-300">

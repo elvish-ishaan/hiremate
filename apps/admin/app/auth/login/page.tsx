@@ -9,27 +9,36 @@ import { toast } from "sonner";
 import axios from "axios";
 import { API_URL } from "@/app/constant";
 import { useRouter } from "next/navigation";
+import Loader from "@/components/loaders/loader";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false)
   const router = useRouter()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await axios.post(`${API_URL}/auth/login`, {
+    setLoading(true)
+    try {
+      const res = await axios.post(`${API_URL}/auth/login`, {
       email,
       password,
     });
     if(!res.data.success){
       toast.error(res.data.message)
     }
-    toast.success("Logged In")
     //save token to local storage
     localStorage.setItem("token", res.data.token)
     localStorage.setItem("user", JSON.stringify(res.data.user))
+    toast.success("Logged In")
     //redirect to home page
     router.push("/dashboard")
+    } catch (error) {
+      toast.error("something went wrong");
+    }finally{
+      setLoading(false)
+    }
   };
 
   return (
@@ -49,7 +58,7 @@ export default function LoginPage() {
 
           <form className="space-y-6" onSubmit={handleLogin}>
             <div>
-              <Label htmlFor="email">Email</Label>
+              <Label className=" my-2" htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -61,7 +70,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <Label htmlFor="password">Password</Label>
+              <Label className=" my-2" htmlFor="password">Password</Label>
               <Input
                 id="password"
                 type="password"
@@ -72,8 +81,8 @@ export default function LoginPage() {
               />
             </div>
 
-            <Button type="submit" className="w-full rounded-xl text-lg py-5">
-              Login
+            <Button disabled={loading} type="submit" className="w-full rounded-xl text-lg py-5">
+              { loading ? <Loader/> : "Login"}
             </Button>
 
             <p className="text-sm text-center text-gray-300">

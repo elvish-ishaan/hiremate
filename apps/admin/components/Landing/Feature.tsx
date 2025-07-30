@@ -1,11 +1,6 @@
 import React from "react";
-import { ShineBorder } from "../magicui/shine-border";
-import {
-  Card,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
+import { BoxReveal } from "@/components/magicui/box-reveal";
+import { Button } from "@/components/ui/button";
 import {
   Sparkles,
   CheckCircle,
@@ -14,88 +9,119 @@ import {
   ShieldCheck,
   FileText,
 } from "lucide-react";
-import { DotPattern } from "../magicui/dot-pattern";
-import { cn } from "@/lib/utils";
+
+const colors = ["#52b788", "#2d6a4f", "#FFBE7B", "#495057"];
 
 const features = [
   {
     id: 1,
     title: "Automate Interviews",
     description: "AI handles end-to-end interviews with smart question logic.",
+    details:
+      "Our AI dynamically adjusts questions based on candidate responses, ensuring personalized and adaptive assessments.",
     icon: Sparkles,
+    cta: "See it in Action",
   },
   {
     id: 2,
     title: "Cheat Detection",
-    description: "Advanced behavior & environmental analysis for fairness.",
+    description:
+      "Advanced behavior & environmental analysis for fairness.",
+    details:
+      "Face detection, screen monitoring, and room scanning ensure candidates are fairly evaluated with zero tolerance for misconduct.",
     icon: ShieldCheck,
+    cta: "Explore Security",
   },
   {
     id: 3,
     title: "Scoring System",
-    description: "Auto-score answers using accuracy, tone, and completeness.",
+    description:
+      "Auto-score answers using accuracy, tone, and completeness.",
+    details:
+      "Scoring is powered by AI models trained to evaluate technical content, tone modulation, and relevance to job roles.",
     icon: CheckCircle,
+    cta: "View Scoring Model",
   },
   {
     id: 4,
     title: "Candidate Reports",
-    description: "Get full breakdowns: answers, scores, transcripts, and more.",
+    description:
+      "Get full breakdowns: answers, scores, transcripts, and more.",
+    details:
+      "Post-interview reports include transcripts, emotion tracking, and scoring breakdowns for full visibility.",
     icon: FileText,
+    cta: "Download Sample Report",
   },
   {
     id: 5,
     title: "Human-like AI Agent",
-    description: "Dynamic follow-ups & adaptive questioning like real interviews.",
+    description:
+      "Dynamic follow-ups & adaptive questioning like real interviews.",
+    details:
+      "Our AI recruiter mimics real-time follow-ups based on candidate expressions and response depth.",
     icon: UserCheck,
+    cta: "Meet the Agent",
   },
   {
     id: 6,
     title: "Efficient Evaluation",
-    description: "Quickly compare candidates with summarized metrics.",
+    description:
+      "Quickly compare candidates with summarized metrics.",
+    details:
+      "Dashboards help filter, rank, and shortlist the best candidates at scale — saving hours of manual screening.",
     icon: BadgeCheck,
+    cta: "Try Comparison Tool",
   },
 ];
 
-const Feature = () => {
+export function Feature() {
   return (
-    <div
-  className="w-full flex flex-col items-center justify-center px-6 py-16
-    bg-[linear-gradient(to_right,rgba(0,0,0,0.5),rgba(0,128,0,0.2))]
-    backdrop-blur-xl 
-    border border-white/15 shadow-[0_4px_30px_rgba(0,0,0,0.2)]"
->
-      <h1 className="text-3xl font-semibold text-primary text-center mb-10">
-        Features
-      </h1>
+    <section className="w-full min-h-screen px-6 sm:px-12 bg-background text-foreground">
+      {/* Hero Heading */}
+      <div className="flex justify-center items-center min-h-[30vh]">
+        <BoxReveal boxColor="#52b788" duration={0.7}>
+          <h2 className="text-5xl sm:text-6xl font-bold text-center text-primary">
+            Why Teams Choose Us
+          </h2>
+        </BoxReveal>
+      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 w-full max-w-6xl">
-        {features.map((feature) => {
-          const Icon = feature.icon;
+      {/* Feature List */}
+      <div className="max-w-5xl mx-auto flex flex-col items-start gap-32">
+        {features.map(({ id, title, description, details, icon: Icon, cta }, index) => {
+          const color = colors[index % colors.length];
+
           return (
-            <Card
-              key={feature.id}
-              className="relative hover:scale-105 transition-all h-44 w-full max-w-xs mx-auto overflow-hidden flex flex-col justify-center px-4 py-3 text-left" 
-            >
-              <ShineBorder shineColor={["#52b788", "#2d6a4f", "#FFBE7B"]} />
-              <CardHeader className="flex flex-col items-center text-center space-x-4 p-0">
-                <div className="flex-shrink-0">
-                  <Icon className="w-8 h-8 text-primary" />
-                </div>
-                <div className="space-y-1">
-                  <CardTitle className="text-base font-semibold text-primary">
-                    {feature.title}
-                  </CardTitle>
-                  <CardDescription className="text-sm text-muted-foreground leading-snug">
-                    {feature.description}
-                  </CardDescription>
-                </div>
-              </CardHeader>
-            </Card>
+            <div key={id} className="w-full flex flex-col items-start text-left">
+              <BoxReveal boxColor={color} duration={0.4}>
+                <Icon className="w-10 h-10 text-primary mb-4" />
+              </BoxReveal>
+
+              <BoxReveal boxColor={color} duration={0.5}>
+                <h3 className="text-3xl sm:text-4xl font-semibold text-primary mb-2">
+                  {title}
+                </h3>
+              </BoxReveal>
+
+              <BoxReveal boxColor={color} duration={0.5}>
+                <p className="text-lg text-muted-foreground mb-1 max-w-2xl">
+                  {description}
+                </p>
+              </BoxReveal>
+
+              <BoxReveal boxColor={color} duration={0.5}>
+                <p className="text-sm text-muted-foreground mb-6 max-w-3xl">
+                  {details}
+                </p>
+              </BoxReveal>
+
+              <BoxReveal boxColor={color} duration={0.5}>
+                <Button className="bg-[#52b788] hover:bg-[#40916c]">{cta}</Button>
+              </BoxReveal>
+            </div>
           );
         })}
       </div>
-    </div>
+    </section>
   );
-};
-
-export default Feature;
+}

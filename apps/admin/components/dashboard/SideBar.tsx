@@ -13,6 +13,8 @@ import {
   Home,
 } from "lucide-react";
 import { toast } from "sonner";
+import { ShimmerButton } from "../magicui/shimmer-button";
+import { OrgModal } from "./OrgModal";
 
 const sidebarLinks = [
   {
@@ -26,12 +28,6 @@ const sidebarLinks = [
     name: "Portals",
     icon: <LayoutDashboard/>,
     href: "/portals",
-  },
-  {
-    id: 5,
-    name: "Reports",
-    icon: <ReceiptEuro/>,
-    href: "/reports",
   },
   {
     id: 4,
@@ -51,6 +47,8 @@ interface Organisation {
 const Sidebar = () => {
   const router = useRouter();
   const [organization, setOrganization] = useState<Organisation | null>(null) 
+    const [openOrgModal, setOpenOrgModal] = useState(false);
+
 
   const handleLogout = () => {
     //remove the token from local storage
@@ -68,15 +66,24 @@ const Sidebar = () => {
       {/* Top Section: Title + Links */}
       <div>
         <h1 className="text-2xl font-bold text-primary mb-6">HireMate</h1>
-        <div className=" flex gap-2 px-2 py-4 items-center">
+        {
+          organization ? <div className=" flex gap-2 px-2 py-4 items-center">
            <div>
              <img src={organization?.logo} alt="logo" className="w-8 h-8" />
            </div>
            <div className=" text-muted-foreground">
              <div>{organization?.name}</div>
            </div>
-        </div>
-        <Separator className=" mb-2"/>
+        </div> : <>
+        <ShimmerButton onClick={()=>setOpenOrgModal(true)} className="shadow-2xl">
+                   <span className="whitespace-pre-wrap text-center text-sm font-medium leading-none tracking-tight text-primary dark:from-white dark:to-slate-900/10 lg:text-lg">
+                     Create Organisation
+                   </span>
+                  </ShimmerButton>
+                  <OrgModal open={openOrgModal} onOpenChange={setOpenOrgModal}/>
+        </>
+        }
+        <Separator className=" my-2"/>
         <nav className="space-y-2">
           {sidebarLinks.map((link) => (
             <SidebarLink key={link.id} href={link.href} icon={link.icon} label={link.name} />
