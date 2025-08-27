@@ -15,6 +15,8 @@ import {
 import { toast } from "sonner";
 import { ShimmerButton } from "../magicui/shimmer-button";
 import { OrgModal } from "./OrgModal";
+import axios from "axios";
+import { API_URL } from "@/app/constant";
 
 const sidebarLinks = [
   {
@@ -48,6 +50,7 @@ const Sidebar = () => {
   const router = useRouter();
   const [organization, setOrganization] = useState<Organisation | null>(null) 
     const [openOrgModal, setOpenOrgModal] = useState(false);
+  const [isOrgLoading, setIsOrgLoading] = useState<boolean>(false)
 
 
   const handleLogout = () => {
@@ -58,15 +61,37 @@ const Sidebar = () => {
   };
 
   useEffect(() => {
-      const {organizations} = JSON.parse(localStorage.getItem("user") as string)
-      setOrganization(organizations[0])
+      const fetchOrgs = async () => {
+        try {
+          setIsOrgLoading(true)
+          const res = await axios.get(`${API_URL}/organization/get-organization`,{
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem('token')}`
+            }
+          })
+          if(!res.data.success){
+            toast.error('Cant find organization')
+          }
+          setOrganization(res.data?.organization)
+        } catch (error) {
+          console.log(error,'error in fetching orgs')
+          toast.error('Cant fetch organization')
+        }finally{
+          setIsOrgLoading(false)
+        }
+      }
+      fetchOrgs()
   },[])
+
   return (
     <aside className="h-screen w-64 bg-white/10 backdrop-blur-lg border-r border-white/10 shadow-lg flex flex-col justify-between py-6 px-4">
       {/* Top Section: Title + Links */}
       <div>
         <h1 className="text-2xl font-bold text-primary mb-6">HireMate</h1>
         {
+          isOrgLoading ? <span>loading.....</span> :
+          <>
+          {
           organization ? <div className=" flex gap-2 px-2 py-4 items-center">
            <div>
              <img src={organization?.logo} alt="logo" className="w-8 h-8" />
@@ -82,6 +107,8 @@ const Sidebar = () => {
                   </ShimmerButton>
                   <OrgModal open={openOrgModal} onOpenChange={setOpenOrgModal}/>
         </>
+        }
+          </>
         }
         <Separator className=" my-2"/>
         <nav className="space-y-2">

@@ -91,7 +91,7 @@ export default function CreatePortalPage() {
         <Card className="p-6 space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="title">Title</Label>
+              <Label className=" my-2" htmlFor="title">Title</Label>
               <Input
                 id="title"
                 name="title"
@@ -102,7 +102,7 @@ export default function CreatePortalPage() {
               />
             </div>
             <div>
-              <Label htmlFor="role">Role</Label>
+              <Label className=" my-2" htmlFor="role">Role</Label>
               <Input
                 id="role"
                 name="role"
@@ -113,7 +113,7 @@ export default function CreatePortalPage() {
               />
             </div>
             <div>
-              <Label htmlFor="department">Department</Label>
+              <Label className=" my-2" htmlFor="department">Department</Label>
               <Input
                 id="department"
                 name="department"
@@ -124,7 +124,7 @@ export default function CreatePortalPage() {
               />
             </div>
             <div>
-              <Label htmlFor="jobType">Job Type</Label>
+              <Label className=" my-2" htmlFor="jobType">Job Type</Label>
               <Input
                 id="jobType"
                 name="jobType"
@@ -137,7 +137,7 @@ export default function CreatePortalPage() {
           </div>
 
           <div>
-            <Label htmlFor="skillsRequired">Skills Required</Label>
+            <Label className=" my-2" htmlFor="skillsRequired">Skills Required</Label>
             <Input
               id="skillsRequired"
               name="skillsRequired"
@@ -148,7 +148,7 @@ export default function CreatePortalPage() {
           </div>
 
           <div>
-            <Label htmlFor="description">Description</Label>
+            <Label className=" my-2" htmlFor="description">Description</Label>
             <Textarea
               id="description"
               name="description"
@@ -163,7 +163,7 @@ export default function CreatePortalPage() {
           <h2 className="text-lg font-medium">Candidate Input</h2>
 
           <div>
-            <Label htmlFor="candidates">Candidate Emails</Label>
+            <Label className=" my-2" htmlFor="candidates">Candidate Emails</Label>
             <Input
               id="candidate"
               name="candidates"
@@ -174,7 +174,7 @@ export default function CreatePortalPage() {
           </div>
 
           <div>
-            <Label htmlFor="csvFile">Upload CSV</Label>
+            <Label className=" my-2" htmlFor="csvFile">Upload CSV</Label>
             <div className="flex items-center gap-4">
               <Input id="csvFile" type="file" accept=".csv" onChange={handleCsvUpload} />
               {csvFile && (
