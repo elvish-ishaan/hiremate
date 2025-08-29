@@ -7,6 +7,7 @@ export const createPortal = async (req: Request, res: Response) => {
         //add validation
         //save to db
         const { title, description, role, skillsRequired, candidates, jobType, department, organizationId } = req.body
+        console.log(req.body, "body........");
         try {
             const portal = await prisma.portal.create({
                 data: {
@@ -20,9 +21,17 @@ export const createPortal = async (req: Request, res: Response) => {
                     organizationId
                 }
             })
-            //send demo link to first candidate
-            const candidateEmail = portal.candidates[0]
-            await sendMail(candidateEmail as string, portal.id)
+
+            //TODO: USE ANY QUEUE HERE AND MAKE OTHER SERVICE FOR EMAIL
+            //send demo link to every candidate
+            try {
+                const candidateEmail = portal.candidates
+                for (let i = 0; i < candidateEmail.length; i++) {
+                    await sendMail(candidateEmail[i] as string, portal.id)
+            }
+            } catch (error) {
+                console.log(error, "error in sending mail")
+            }
             res.status(200).json({
                 success: true,
                 message: "portal created successfully",

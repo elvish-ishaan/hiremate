@@ -8,14 +8,16 @@ interface JwtPayload {
 
 export const isLoggedIn = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    console.log(req.headers, "headers........");
     const authHeader = req.headers.authorization;
     const token = authHeader?.split(" ")[1];
 
     if (!token) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         message: "Token not found",
       });
+      return
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET as string);
@@ -27,10 +29,11 @@ export const isLoggedIn = async (req: Request, res: Response, next: NextFunction
     });
 
     if (!user) {
-      return res.status(401).json({
+      res.status(401).json({
         success: false,
         message: "User not found",
       });
+      return
     }
     
     //attach userId to request
@@ -39,9 +42,10 @@ export const isLoggedIn = async (req: Request, res: Response, next: NextFunction
     next();
   } catch (error) {
     console.error(error, "JWT auth error");
-    return res.status(401).json({
+    res.status(401).json({
       success: false,
       message: "Invalid or expired token",
     });
+    return
   }
 };

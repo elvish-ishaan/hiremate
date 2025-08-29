@@ -52,6 +52,8 @@ export const OrgModal = ({
         toast.error(res.data.message);
         return;
       }
+      //save org data to localstorage
+      localStorage.setItem("organization", JSON.stringify(res.data.organization));
       toast.success("Organization created successfully");
       setForm({ name: "", logo: "" });
       onOpenChange(false); // close modal

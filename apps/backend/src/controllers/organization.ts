@@ -21,16 +21,18 @@ export const createOrganization = async (req: Request, res: Response) => {
 
         //if not, save to db
         try {
-             await prisma.organization.create({
+            const org =  await prisma.organization.create({
                 data: {
                     name: req.body.name,
                     logo: req.body.logo,
-                    userId: req.userId
+                    userId: req.userId as string
                 }
             })
+            console.log(org,'org created........')
             res.status(200).json({
                 success: true,
                 message: "organization created successfully",
+                organization: org
             })
             return
         } catch (error) {

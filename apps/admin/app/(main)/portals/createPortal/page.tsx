@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
-import { UploadCloud } from "lucide-react";
+// import { UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
 import { API_URL } from "@/app/constant";
@@ -22,11 +22,11 @@ export default function CreatePortalPage() {
     jobType: "",
     department: "",
     skillsRequired: "",
-    organizationId: "9b6d4ff3-dbd2-441e-9acb-101e846d8718",  //fix it later
+    organizationId: JSON.parse(localStorage.getItem('organization') || "{}").id,
   });
   const [candidates, setCandidates] = useState<string[]>([]);
 
-  const [csvFile, setCsvFile] = useState<File | null>(null);
+  // const [csvFile, setCsvFile] = useState<File | null>(null);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -34,11 +34,11 @@ export default function CreatePortalPage() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setCsvFile(e.target.files[0]);
-    }
-  };
+  // const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   if (e.target.files && e.target.files.length > 0) {
+  //     setCsvFile(e.target.files[0]);
+  //   }
+  // };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,11 +51,15 @@ export default function CreatePortalPage() {
         .split(",")
         .map((s) => s.trim())
         .filter(Boolean),
-      csvFile,
     };
 
     try {
-        const res = await axios.post(`${API_URL}/portal/create-portal`, portalData);
+        const res = await axios.post(`${API_URL}/portal/create-portal`, portalData, {
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${localStorage.getItem("token")}`
+          },
+        });
         if (!res.data.success) {
             toast.error(res.data.message);
         }
@@ -173,7 +177,7 @@ export default function CreatePortalPage() {
             />
           </div>
 
-          <div>
+          {/* <div>
             <Label className=" my-2" htmlFor="csvFile">Upload CSV</Label>
             <div className="flex items-center gap-4">
               <Input id="csvFile" type="file" accept=".csv" onChange={handleCsvUpload} />
@@ -183,7 +187,7 @@ export default function CreatePortalPage() {
                 </span>
               )}
             </div>
-          </div>
+          </div> */}
         </Card>
 
         <Button type="submit" className="w-full text-base py-5 rounded-xl">
