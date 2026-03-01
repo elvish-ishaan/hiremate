@@ -8,6 +8,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import axios from "axios";
 import { API_URL } from "@/app/constant";
+import { setStorageItem } from "@/lib/storage";
 import { useRouter } from "next/navigation";
 import Loader from "@/components/loaders/loader";
 
@@ -29,8 +30,8 @@ export default function LoginPage() {
       toast.error(res.data.message)
     }
     //save token to local storage
-    localStorage.setItem("token", res.data.token)
-    localStorage.setItem("user", JSON.stringify(res.data.user))
+    setStorageItem("token", res.data.token)
+    setStorageItem("user", JSON.stringify(res.data.user))
     toast.success("Logged In")
     //redirect to home page
     router.push("/dashboard")

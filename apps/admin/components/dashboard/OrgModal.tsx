@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import axios from "axios";
 import { API_URL } from "@/app/constant";
+import { getStorageItem, setStorageItem } from "@/lib/storage";
 import Loader from "../loaders/loader";
 
 interface CreateOrganizationModalProps {
@@ -40,7 +41,7 @@ export const OrgModal = ({
     };
 
     try {
-      const token = localStorage.getItem("token");
+      const token = getStorageItem("token");
 
       const res = await axios.post(`${API_URL}/organization/create-organization`, organizationData, {
         headers: {
@@ -53,7 +54,7 @@ export const OrgModal = ({
         return;
       }
       //save org data to localstorage
-      localStorage.setItem("organization", JSON.stringify(res.data.organization));
+      setStorageItem("organization", JSON.stringify(res.data.organization));
       toast.success("Organization created successfully");
       setForm({ name: "", logo: "" });
       onOpenChange(false); // close modal

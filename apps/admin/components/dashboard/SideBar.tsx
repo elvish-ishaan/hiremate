@@ -17,6 +17,7 @@ import { ShimmerButton } from "../magicui/shimmer-button";
 import { OrgModal } from "./OrgModal";
 import axios from "axios";
 import { API_URL } from "@/app/constant";
+import { getStorageItem, removeStorageItem } from "@/lib/storage";
 
 const sidebarLinks = [
   {
@@ -55,7 +56,7 @@ const Sidebar = () => {
 
   const handleLogout = () => {
     //remove the token from local storage
-    localStorage.removeItem("token");
+    removeStorageItem("token");
     toast("loged out")
     router.push("/auth/login");
   };
@@ -66,7 +67,7 @@ const Sidebar = () => {
           setIsOrgLoading(true)
           const res = await axios.get(`${API_URL}/organization/get-organization`,{
             headers: {
-              Authorization: `Bearer ${localStorage.getItem('token')}`
+              Authorization: `Bearer ${getStorageItem('token')}`
             }
           })
           if(!res.data.success){

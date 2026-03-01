@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import axios from "axios";
 import { API_URL } from "@/app/constant";
+import { getStorageItem } from "@/lib/storage";
 
 export default function CreatePortalPage() {
   const router = useRouter();
@@ -22,9 +23,15 @@ export default function CreatePortalPage() {
     jobType: "",
     department: "",
     skillsRequired: "",
-    organizationId: JSON.parse(localStorage.getItem('organization') || "{}").id,
+    organizationId: "",
   });
+
+  useEffect(() => {
+    const org = JSON.parse(getStorageItem('organization') || "{}");
+    setForm(prev => ({ ...prev, organizationId: org.id || "" }));
+  }, []);
   const [candidates, setCandidates] = useState<string[]>([]);
+  const [candidateInput, setCandidateInput] = useState("");
 
   // const [csvFile, setCsvFile] = useState<File | null>(null);
 
@@ -44,9 +51,10 @@ export default function CreatePortalPage() {
     e.preventDefault();
 
     //send portal data wiht org id
+    const parsedCandidates = candidateInput.split(",").map((s) => s.trim()).filter(Boolean);
     const portalData = {
       ...form,
-      candidates,
+      candidates: parsedCandidates,
       skillsRequired: form.skillsRequired
         .split(",")
         .map((s) => s.trim())
@@ -57,7 +65,7 @@ export default function CreatePortalPage() {
         const res = await axios.post(`${API_URL}/portal/create-portal`, portalData, {
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${localStorage.getItem("token")}`
+            "Authorization": `Bearer ${getStorageItem("token")}`
           },
         });
         if (!res.data.success) {
@@ -74,6 +82,7 @@ export default function CreatePortalPage() {
             organizationId: "",
         });
         setCandidates([]);
+        setCandidateInput("");
         toast.success("Portal created successfully");
     } catch (error) {
         toast.error("Something went wrong");
@@ -171,8 +180,8 @@ export default function CreatePortalPage() {
             <Input
               id="candidate"
               name="candidates"
-              value={candidates}
-              onChange={(e) => setCandidates((prev) => [...prev, e.target.value])}
+              value={candidateInput}
+              onChange={(e) => setCandidateInput(e.target.value)}
               placeholder="Comma-separated emails, e.g., user1@mail.com, user2@mail.com"
             />
           </div>

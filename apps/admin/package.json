@@ -31,6 +31,9 @@
     "sonner": "^2.0.6",
     "tailwind-merge": "^3.3.1"
   },
+  "optionalDependencies": {
+    "@next/swc-win32-x64-msvc": "15.3.5"
+  },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",

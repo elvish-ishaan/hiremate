@@ -10,6 +10,7 @@
   },
   "devDependencies": {
     "prettier": "^3.6.2",
+    "prisma": "^6.19.2",
     "turbo": "^2.5.4",
     "typescript": "5.8.3"
   },
@@ -22,6 +23,7 @@
     "packages/*"
   ],
   "dependencies": {
+    "@prisma/client": "^6.19.2",
     "@types/bcrypt": "^5.0.2",
     "@types/express": "^5.0.3",
     "axios": "^1.10.0",

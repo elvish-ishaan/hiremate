@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import axios from "axios";
 import { API_URL } from "@/app/constant";
+import { getStorageItem } from "@/lib/storage";
 
 export default function CreateOrganizationPage() {
   const router = useRouter();
@@ -34,7 +35,7 @@ export default function CreateOrganizationPage() {
 
     try {
         //send with token
-        const token = localStorage.getItem("token");
+        const token = getStorageItem("token");
         const res = await axios.post(`${API_URL}/organization/create-organization`, organizationData, {
             headers: {
                 Authorization: `Bearer ${token}`

@@ -23,6 +23,14 @@ interface IncomingDataProps {
 
 const wss = new WebSocketServer({ port: 5000 });
 
+wss.on('error', (error: NodeJS.ErrnoException) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error('Port 5000 is already in use. Kill the existing process and retry.');
+    process.exit(1);
+  }
+  throw error;
+});
+
 wss.on('connection', async (ws, req) => {
   ws.on('error', console.error);
 

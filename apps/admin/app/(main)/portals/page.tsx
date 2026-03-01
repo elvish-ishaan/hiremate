@@ -9,6 +9,7 @@ import {  Plus } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
 import { API_URL } from "@/app/constant";
+import { getStorageItem } from "@/lib/storage";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const formatDate = (dateStr: string) =>
@@ -29,7 +30,7 @@ const PortalsPage = () => {
       try {
         const res = await axios.get(`${API_URL}/portal/${orgId}/list-portals`, {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            Authorization: `Bearer ${getStorageItem("token")}`,
           },
         });
 
