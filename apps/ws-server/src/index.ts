@@ -1,25 +1,13 @@
+import 'dotenv/config';
 import { prisma } from '@repo/db';
-import { WebSocketServer } from 'ws';
-import { agent } from './agent/agentClient';
-import getSystemPrompt, { generateScoringPrompt } from './lib/prompts';
+import { WebSocketServer, WebSocket } from 'ws';
 import { parse } from 'url';
-import { bufferTollmFormat, cleanAndParseJson, encodeWAV, objectToFloat32Array, transcribeAudio } from './lib/auxOps';
+import getSystemPrompt from './lib/prompts';
+import { scoreAnswer } from './lib/auxOps';
 
-enum STATUS {
-  PING = "ping",
-  START = "start",
-  ONGOING = 'ongoing',
-  FINISHED = 'finished'  
-}
-
-interface IncomingDataProps {
-  userId?: string;
-  status: STATUS;
-  answer: string;
-  question?: string;
-  sessionId?: string;
-  questionBuffer?: Blob;
-}
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY!;
+const OPENAI_REALTIME_URL =
+  'wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-12-17';
 
 const wss = new WebSocketServer({ port: 5000 });
 
@@ -31,8 +19,8 @@ wss.on('error', (error: NodeJS.ErrnoException) => {
   throw error;
 });
 
-wss.on('connection', async (ws, req) => {
-  ws.on('error', console.error);
+wss.on('connection', async (clientWs, req) => {
+  clientWs.on('error', console.error);
 
   if (!req.url) return;
 
@@ -41,213 +29,192 @@ wss.on('connection', async (ws, req) => {
   const userId = query.userId as string;
 
   if (!portalId || !userId) {
-    console.log("Missing portalId or userId");
+    console.log('Missing portalId or userId');
+    clientWs.close();
     return;
-  };
+  }
 
   const portal = await prisma.portal.findFirst({ where: { id: portalId } });
   if (!portal) {
-    console.log("Portal not found");
+    console.log('Portal not found');
+    clientWs.close();
     return;
+  }
+
+  let sessionId: string | null = null;
+  let pendingQuestion = '';
+
+  // Connect to OpenAI Realtime API
+  const openAiWs = new WebSocket(OPENAI_REALTIME_URL, {
+    headers: {
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
+      'OpenAI-Beta': 'realtime=v1',
+    },
+  });
+
+  const cleanup = () => {
+    if (
+      openAiWs.readyState === WebSocket.OPEN ||
+      openAiWs.readyState === WebSocket.CONNECTING
+    ) {
+      openAiWs.close();
+    }
+    if (
+      clientWs.readyState === WebSocket.OPEN ||
+      clientWs.readyState === WebSocket.CONNECTING
+    ) {
+      clientWs.close();
+    }
   };
 
-  //listen for the incomming messages
-  ws.on('message', async (data) => {
+  openAiWs.on('error', (err) => {
+    console.error('OpenAI WS error:', err);
+    if (clientWs.readyState === WebSocket.OPEN) {
+      clientWs.send(JSON.stringify({ type: 'error', message: 'AI service connection error' }));
+    }
+    cleanup();
+  });
+
+  openAiWs.on('open', () => {
+    console.log('Connected to OpenAI Realtime API');
+  });
+
+  openAiWs.on('message', async (rawData) => {
     try {
-      const parsedData: IncomingDataProps = JSON.parse(data.toString());
-      console.log('message, rec')
+      const event = JSON.parse(rawData.toString());
 
-      switch (parsedData.status) {
-        case STATUS.PING: {
-          // Start with initial system question
-          const initialResponse = await agent.models.generateContent({
-            model: "gemini-2.0-flash",
-            contents: "Begin the interview now",
-            config: {
-              systemInstruction: getSystemPrompt(portal),
-            },
-          });
-        
-          const initialParsed = cleanAndParseJson(initialResponse.text as string);
-          //generate the audio of the text
-          const response = await agent.models.generateContent({
-             model: "gemini-2.5-flash-preview-tts",
-             contents: [{ parts: [{ text: initialParsed.question }] }],
-             config: {
-                   responseModalities: ['AUDIO'],
-                   speechConfig: {
-                      voiceConfig: {
-                         prebuiltVoiceConfig: { voiceName: 'Gacrux' },
-                      },
-                   },
-             },
-          });
-       
-          const data = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-          const rawPcmBuffer = Buffer.from(data, 'base64');
-          const wavBuffer = encodeWAV(rawPcmBuffer);
-
-          ws.send(JSON.stringify({
-            questionBuffer: wavBuffer,
-            status: initialParsed.status ,
-            question: initialParsed.question,
-          }));
+      switch (event.type) {
+        case 'session.created': {
+          openAiWs.send(
+            JSON.stringify({
+              type: 'session.update',
+              session: {
+                modalities: ['audio', 'text'],
+                instructions: getSystemPrompt(portal),
+                voice: 'alloy',
+                input_audio_format: 'pcm16',
+                output_audio_format: 'pcm16',
+                input_audio_transcription: { model: 'whisper-1' },
+                turn_detection: {
+                  type: 'server_vad',
+                  threshold: 0.5,
+                  prefix_padding_ms: 300,
+                  silence_duration_ms: 800,
+                },
+                tools: [
+                  {
+                    type: 'function',
+                    name: 'end_interview',
+                    description:
+                      'Call this function when the interview is complete after all questions have been asked and answered.',
+                    parameters: { type: 'object', properties: {} },
+                  },
+                ],
+                tool_choice: 'auto',
+              },
+            })
+          );
           break;
         }
-        case STATUS.START: {
-          //convert the audio to text and transcribe it
-          const answerText = await transcribeAudio(parsedData.answer);
-          if(!answerText){
-            console.log('no answer text found')
-            return
+
+        case 'session.updated': {
+          if (clientWs.readyState === WebSocket.OPEN) {
+            clientWs.send(JSON.stringify({ type: 'ready' }));
           }
+          // Trigger the opening greeting / first question
+          openAiWs.send(JSON.stringify({ type: 'response.create' }));
+          break;
+        }
 
-          const questionAnswerPair = {
-            question: parsedData.question!,
-            answer: answerText,
-          };
+        case 'response.audio.delta': {
+          if (clientWs.readyState === WebSocket.OPEN) {
+            clientWs.send(JSON.stringify({ type: 'audio_chunk', data: event.delta }));
+          }
+          break;
+        }
 
-          const scoreResponse = await agent.models.generateContent({
-            model: "gemini-2.0-flash",
-            contents: 'Generate the response',
-            config: {
-              systemInstruction: generateScoringPrompt(questionAnswerPair),
-            },
-          });
+        case 'response.output_item.done': {
+          const item = event.item;
 
-          const parsedScore = cleanAndParseJson(scoreResponse.text as string);
-
-          const session = await prisma.session.create({
-            data: {
-              userId,
-              portalId,
-              conversation: {
-                create: {
-                  question: questionAnswerPair.question,
-                  answer: questionAnswerPair.answer,
-                  score: parsedScore.score,
-                },
-              },
-            },
-            include: {
-              conversation: true
+          if (item.type === 'message' && item.role === 'assistant') {
+            // Extract the transcript of what the assistant said
+            const content: any[] = item.content ?? [];
+            const audioItem = content.find((c) => c.type === 'audio' && c.transcript);
+            const textItem = content.find((c) => c.type === 'text' && c.text);
+            const text = audioItem?.transcript ?? textItem?.text ?? '';
+            if (text) {
+              pendingQuestion = text;
             }
-          });
-
-          const nextQuestion = await agent.models.generateContent({
-            model: "gemini-2.0-flash",
-            //pass the array of all conversation data
-            contents: `previous conversation: ${session?.conversation}\n. Now generate the next question`,
-            config: {
-              systemInstruction: getSystemPrompt(portal),
-            },
-          });
-          //clean and parced the next question data
-          const parsedNextQuestion = cleanAndParseJson(nextQuestion.text as string);
-          //generate the audio of the text
-          const response = await agent.models.generateContent({
-             model: "gemini-2.5-flash-preview-tts",
-             contents: [{ parts: [{ text: parsedNextQuestion.question }] }],
-             config: {
-                   responseModalities: ['AUDIO'],
-                   speechConfig: {
-                      voiceConfig: {
-                         prebuiltVoiceConfig: { voiceName: 'Gacrux' },
-                      },
-                   },
-             },
-          });
-       
-          const data = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-          const rawPcmBuffer = Buffer.from(data, 'base64');
-          const wavBuffer = encodeWAV(rawPcmBuffer);
-
-          ws.send(JSON.stringify({
-            questionBuffer: wavBuffer,
-            status: parsedNextQuestion.status,
-            question: parsedNextQuestion.question,
-            sessionId: session.id,
-          }));
-          break;
-        }
-
-        case STATUS.ONGOING: {
-          //convert the audio to text
-          const answerText = await transcribeAudio(parsedData.answer);
-          if(!answerText){
-            console.log('no answer text found')
-            return
-          }
-          const scoreResponse = await agent.models.generateContent({
-            model: "gemini-2.0-flash",
-            contents: 'Generate the response',
-            config: {
-              systemInstruction: generateScoringPrompt({
-                question: parsedData.question!,
-                answer: answerText,
-              }),
-            },
-          });
-
-          const parsedScore = cleanAndParseJson(scoreResponse.text as string);
-
-          const updatedSession = await prisma.session.update({
-            where: { id: parsedData.sessionId! },
-            data: {
-              conversation: {
-                create: {
-                  question: parsedData.question!,
-                  answer: parsedScore.answer,
-                  score: parsedScore.score,
+          } else if (item.type === 'function_call' && item.name === 'end_interview') {
+            if (clientWs.readyState === WebSocket.OPEN) {
+              clientWs.send(JSON.stringify({ type: 'interview_ended' }));
+            }
+            // Required: send function call output back to OpenAI
+            openAiWs.send(
+              JSON.stringify({
+                type: 'conversation.item.create',
+                item: {
+                  type: 'function_call_output',
+                  call_id: item.call_id,
+                  output: '{}',
                 },
-              },
-            },
-            include: { conversation: true },
-          });
-          //prepare the converstaion for llm
-          const conversationString = updatedSession.conversation
-          .map(c => `Q: ${c.question}\nA: ${c.answer}`)
-          .join('\n\n');
-
-          const nextQuestion = await agent.models.generateContent({
-            model: "gemini-2.0-flash",
-            contents: `previous conversation: ${conversationString}\n. Now generate the response`,
-            config: {
-              systemInstruction: getSystemPrompt(portal),
-            },
-          });
-
-          const parsedNext = cleanAndParseJson(nextQuestion.text as string);
-          //generate the audio of the text
-          const response = await agent.models.generateContent({
-             model: "gemini-2.5-flash-preview-tts",
-             contents: [{ parts: [{ text: parsedNext.question }] }],
-             config: {
-                   responseModalities: ['AUDIO'],
-                   speechConfig: {
-                      voiceConfig: {
-                         prebuiltVoiceConfig: { voiceName: 'Gacrux' },
-                      },
-                   },
-             },
-          });
-       
-          const data = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-          const rawPcmBuffer = Buffer.from(data, 'base64');
-          const wavBuffer = encodeWAV(rawPcmBuffer);
-
-
-          ws.send(JSON.stringify({
-            questionBuffer: wavBuffer,
-            status: parsedNext.status,
-            question: parsedNext.question,
-          }));
+              })
+            );
+            // Allow time for the final message delivery before closing
+            setTimeout(cleanup, 1500);
+          }
           break;
         }
 
-        case STATUS.FINISHED: {
-          //write the logic of handling the finished state
-          ws.close();
+        case 'conversation.item.input_audio_transcription.completed': {
+          const transcript: string = event.transcript ?? '';
+          if (!transcript || !pendingQuestion) break;
+
+          try {
+            const score = await scoreAnswer(pendingQuestion, transcript);
+
+            if (!sessionId) {
+              const session = await prisma.session.create({
+                data: {
+                  userId,
+                  portalId,
+                  conversation: {
+                    create: {
+                      question: pendingQuestion,
+                      answer: transcript,
+                      score,
+                    },
+                  },
+                },
+              });
+              sessionId = session.id;
+            } else {
+              await prisma.session.update({
+                where: { id: sessionId },
+                data: {
+                  conversation: {
+                    create: {
+                      question: pendingQuestion,
+                      answer: transcript,
+                      score,
+                    },
+                  },
+                },
+              });
+            }
+
+            if (clientWs.readyState === WebSocket.OPEN) {
+              clientWs.send(
+                JSON.stringify({
+                  type: 'conversation_update',
+                  question: pendingQuestion,
+                  answer: transcript,
+                })
+              );
+            }
+          } catch (err) {
+            console.error('Error scoring/saving answer:', err);
+          }
           break;
         }
 
@@ -255,8 +222,62 @@ wss.on('connection', async (ws, req) => {
           break;
       }
     } catch (err) {
-      console.error("Failed to handle message:", err);
-      ws.send(JSON.stringify({ error: "Internal server error" }));
+      console.error('Failed to handle OpenAI message:', err);
+    }
+  });
+
+  openAiWs.on('close', () => {
+    console.log('OpenAI WS closed');
+    if (clientWs.readyState === WebSocket.OPEN) {
+      clientWs.close();
+    }
+  });
+
+  // Handle messages from client
+  clientWs.on('message', (data) => {
+    try {
+      const msg = JSON.parse(data.toString());
+
+      switch (msg.type) {
+        case 'start_interview': {
+          // No-op: session setup is triggered automatically on connection
+          break;
+        }
+
+        case 'audio_chunk': {
+          if (openAiWs.readyState === WebSocket.OPEN) {
+            openAiWs.send(
+              JSON.stringify({
+                type: 'input_audio_buffer.append',
+                audio: msg.data,
+              })
+            );
+          }
+          break;
+        }
+
+        case 'end_interview': {
+          cleanup();
+          break;
+        }
+
+        default:
+          break;
+      }
+    } catch (err) {
+      console.error('Failed to handle client message:', err);
+    }
+  });
+
+  clientWs.on('close', () => {
+    console.log('Client WS closed');
+    if (
+      openAiWs.readyState === WebSocket.OPEN ||
+      openAiWs.readyState === WebSocket.CONNECTING
+    ) {
+      openAiWs.close();
     }
   });
 });
+
+console.log('WebSocket server listening on port 5000');

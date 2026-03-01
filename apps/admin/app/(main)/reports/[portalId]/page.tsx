@@ -3,7 +3,7 @@
 import { API_URL } from "@/app/constant"
 import { CandidateReports } from "@/components/reports/ReportRen"
 import axios from "axios"
-import { useEffect, useState } from "react"
+import { use, useEffect, useState } from "react"
 
 interface Report {
   id: string
@@ -11,8 +11,8 @@ interface Report {
   score: number
 }
 
-export default function Page({ params }: { params: { portalId: string } }) {
-  const { portalId } = params
+export default function Page({ params }: { params: Promise<{ portalId: string }> }) {
+  const { portalId } = use(params)
   const [reports, setReports] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

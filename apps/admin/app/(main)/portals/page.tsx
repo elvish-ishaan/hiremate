@@ -22,10 +22,19 @@ const formatDate = (dateStr: string) =>
 const PortalsPage = () => {
   const router = useRouter();
   const [portals, setPortals] = useState<Portal[]>([]);
-  const [orgId, setOrgId] = useState<string>("9b6d4ff3-dbd2-441e-9acb-101e846d8718");
+  const [orgId, setOrgId] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
+    const org = JSON.parse(getStorageItem("organization") || "{}");
+    if (org.id) setOrgId(org.id);
+  }, []);
+
+  useEffect(() => {
+    if (!orgId) {
+      setIsLoading(false);
+      return;
+    }
     const fetchPortals = async () => {
       try {
         const res = await axios.get(`${API_URL}/portal/${orgId}/list-portals`, {
