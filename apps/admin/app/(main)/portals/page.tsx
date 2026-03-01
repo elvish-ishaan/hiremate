@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {  Plus } from "lucide-react";
+import { Plus, Copy, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
 import { API_URL } from "@/app/constant";
@@ -24,6 +24,15 @@ const PortalsPage = () => {
   const [portals, setPortals] = useState<Portal[]>([]);
   const [orgId, setOrgId] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [expandedPortal, setExpandedPortal] = useState<string | null>(null);
+  const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
+
+  const copyInviteLink = (portalId: string, email: string) => {
+    const link = `${window.location.origin}/invite/${portalId}?email=${encodeURIComponent(email)}`;
+    navigator.clipboard.writeText(link);
+    setCopiedEmail(email);
+    setTimeout(() => setCopiedEmail(null), 2000);
+  };
 
   useEffect(() => {
     const org = JSON.parse(getStorageItem("organization") || "{}");
@@ -129,10 +138,40 @@ const PortalsPage = () => {
                     <p>Updated: {formatDate(portal.updatedAt)}</p>
                   </div>
                 </CardContent>
-                <CardFooter>
-                  <Button
-                  onClick={() => router.push(`/reports/${portal.id}`)}
-                  variant="outline" className=" justify-start text-sm">See Reports</Button>
+                <CardFooter className="flex flex-col gap-2 items-start">
+                  <div className="flex gap-2 w-full">
+                    <Button
+                      onClick={() => router.push(`/reports/${portal.id}`)}
+                      variant="outline" className="text-sm">
+                      See Reports
+                    </Button>
+                    {portal.candidates.length > 0 && (
+                      <Button
+                        variant="outline"
+                        className="text-sm gap-1"
+                        onClick={() => setExpandedPortal(expandedPortal === portal.id ? null : portal.id)}
+                      >
+                        Invite Links
+                        {expandedPortal === portal.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                      </Button>
+                    )}
+                  </div>
+                  {expandedPortal === portal.id && (
+                    <div className="w-full space-y-1 pt-1">
+                      {portal.candidates.map((email: string) => (
+                        <div key={email} className="flex items-center justify-between gap-2 text-xs bg-muted rounded px-2 py-1.5">
+                          <span className="truncate text-muted-foreground">{email}</span>
+                          <button
+                            onClick={() => copyInviteLink(portal.id, email)}
+                            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                            title="Copy invite link"
+                          >
+                            {copiedEmail === email ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardFooter>
               </Card>
             ))}

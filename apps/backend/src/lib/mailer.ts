@@ -12,7 +12,7 @@ const transporter = nodemailer.createTransport({
 });
 
 export const sendMail = async (email: string, portalId: string) => {
-    const link = portalLinkGenerator(portalId)
+    const link = portalLinkGenerator(portalId, email)
     const mailOptions = {
         from: process.env.EMAIL_USER,
         to: email,

@@ -26,10 +26,28 @@ wss.on('connection', async (clientWs, req) => {
 
   const { query } = parse(req.url, true);
   const portalId = query.portalId as string;
-  const userId = query.userId as string;
+  const email = decodeURIComponent(query.email as string ?? '');
 
-  if (!portalId || !userId) {
-    console.log('Missing portalId or userId');
+  if (!portalId || !email) {
+    console.log('Missing portalId or email');
+    clientWs.close();
+    return;
+  }
+
+  // Find or create a candidate user by email (no password — guest account)
+  let userId: string;
+  try {
+    const user = await prisma.user.upsert({
+      where: { email },
+      update: {},
+      create: {
+        email,
+        name: email.split('@')[0],
+      },
+    });
+    userId = user.id;
+  } catch (err) {
+    console.error('Failed to find/create candidate user:', err);
     clientWs.close();
     return;
   }

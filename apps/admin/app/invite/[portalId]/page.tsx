@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Bot, Eye, Video, VideoOff, MicOff, Mic, PhoneOff, Loader2, MessageSquare } from "lucide-react";
@@ -31,6 +31,8 @@ const STATUS_COLORS: Record<InterviewState, string> = {
 
 export default function InterviewPage() {
   const { portalId } = useParams();
+  const searchParams = useSearchParams();
+  const candidateEmail = searchParams.get("email") ?? "";
   const videoRef = useRef<HTMLVideoElement>(null);
   const conversationEndRef = useRef<HTMLDivElement>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
@@ -39,6 +41,7 @@ export default function InterviewPage() {
   const speakingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const isMutedRef = useRef<boolean>(false);
+  const pendingInterviewEndRef = useRef<boolean>(false);
 
   const [hasMedia, setHasMedia] = useState(false);
   const [interviewState, setInterviewState] = useState<InterviewState>("connecting");
@@ -48,8 +51,6 @@ export default function InterviewPage() {
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [isInterviewEnded, setIsInterviewEnded] = useState(false);
-
-  const userId = "258ff316-ea42-49a7-83cf-9a36e6897bc6";
 
   const playAudioChunk = useCallback((b64: string) => {
     const audioCtx = audioCtxRef.current;
@@ -83,6 +84,9 @@ export default function InterviewPage() {
       source.onended = () => {
         if (nextPlayTimeRef.current <= audioCtx.currentTime + 0.05) {
           setIsAgentSpeaking(false);
+          if (pendingInterviewEndRef.current) {
+            setIsInterviewEnded(true);
+          }
         }
       };
     } catch (err) {
@@ -165,8 +169,9 @@ export default function InterviewPage() {
 
   // WebSocket connection and message handling
   useEffect(() => {
+    if (!candidateEmail) return; // no email in the invite link
     const ws = new WebSocket(
-      `ws://localhost:5000?portalId=${portalId}&userId=${userId}`
+      `ws://localhost:5000?portalId=${portalId}&email=${encodeURIComponent(candidateEmail)}`
     );
     wsRef.current = ws;
 
@@ -195,7 +200,14 @@ export default function InterviewPage() {
             break;
           }
           case "interview_ended": {
-            setIsInterviewEnded(true);
+            const audioCtx = audioCtxRef.current;
+            const isAudioPlaying = audioCtx && nextPlayTimeRef.current > audioCtx.currentTime + 0.05;
+            if (isAudioPlaying) {
+              // Wait for the AI's farewell audio to finish before showing the ended screen
+              pendingInterviewEndRef.current = true;
+            } else {
+              setIsInterviewEnded(true);
+            }
             break;
           }
           case "error": {
@@ -218,7 +230,7 @@ export default function InterviewPage() {
       audioCtxRef.current?.close();
       if (speakingTimerRef.current) clearTimeout(speakingTimerRef.current);
     };
-  }, [portalId, startAudioCapture, playAudioChunk]);
+  }, [portalId, candidateEmail, startAudioCapture, playAudioChunk]);
 
   // Scroll to latest conversation item
   useEffect(() => {
@@ -240,6 +252,17 @@ export default function InterviewPage() {
   };
 
   const isConnecting = interviewState === "connecting";
+
+  if (!candidateEmail) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-gray-50">
+        <div className="text-center space-y-2">
+          <p className="text-lg font-semibold text-gray-800">Invalid invite link</p>
+          <p className="text-sm text-gray-500">This link is missing a candidate email. Please use the link sent to your inbox.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

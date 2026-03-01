@@ -70,11 +70,14 @@ export const getSessionDetails = async (req: Request, res: Response) => {
                 conversation: true,
             },
         })
+        const avgScore = session && session.conversation.length > 0
+            ? session.conversation.reduce((acc, curr) => acc + curr.score, 0) / session.conversation.length
+            : 0;
         //send the compiled report
         res.status(200).json({
             success: true,
             message: "session details fetched successfully",
-            data: session
+            data: session ? { ...session, avgScore } : null
         })
     } catch (error) {
         console.log(error,'error in getting session details')
