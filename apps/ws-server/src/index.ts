@@ -26,23 +26,44 @@ wss.on('connection', async (clientWs, req) => {
 
   const { query } = parse(req.url, true);
   const portalId = query.portalId as string;
-  const email = decodeURIComponent(query.email as string ?? '');
+  const token = query.token as string | undefined;
+  const emailParam = query.email ? decodeURIComponent(query.email as string) : undefined;
 
-  if (!portalId || !email) {
-    console.log('Missing portalId or email');
+  if (!portalId || (!token && !emailParam)) {
+    console.log('Missing portalId or token/email');
     clientWs.close();
     return;
+  }
+
+  // Fetch candidate context if token provided
+  let candidateContext: { name: string; email: string; resumeText: string; linkedIn: string | null } | null = null;
+  let resolvedEmail = emailParam ?? '';
+
+  if (token) {
+    try {
+      const backendUrl = process.env.BACKEND_URL || 'http://localhost:8080';
+      const resp = await fetch(`${backendUrl}/api/candidate/token/${token}`);
+      if (resp.ok) {
+        const json = await resp.json() as { success: boolean; data: { name: string; email: string; resumeText: string; linkedIn: string | null } };
+        if (json.success) {
+          candidateContext = json.data;
+          resolvedEmail = json.data.email;
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch candidate context:', err);
+    }
   }
 
   // Find or create a candidate user by email (no password — guest account)
   let userId: string;
   try {
     const user = await prisma.user.upsert({
-      where: { email },
+      where: { email: resolvedEmail },
       update: {},
       create: {
-        email,
-        name: email.split('@')[0],
+        email: resolvedEmail,
+        name: candidateContext?.name ?? resolvedEmail.split('@')[0],
       },
     });
     userId = user.id;
@@ -108,7 +129,7 @@ wss.on('connection', async (clientWs, req) => {
               type: 'session.update',
               session: {
                 modalities: ['audio', 'text'],
-                instructions: getSystemPrompt(portal),
+                instructions: getSystemPrompt(portal, candidateContext ?? undefined),
                 voice: 'alloy',
                 input_audio_format: 'pcm16',
                 output_audio_format: 'pcm16',

@@ -32,6 +32,8 @@ const STATUS_COLORS: Record<InterviewState, string> = {
 export default function InterviewPage() {
   const { portalId } = useParams();
   const searchParams = useSearchParams();
+  const candidateToken = searchParams.get("token") ?? "";
+  // Legacy support: fall back to email param if token not present
   const candidateEmail = searchParams.get("email") ?? "";
   const videoRef = useRef<HTMLVideoElement>(null);
   const conversationEndRef = useRef<HTMLDivElement>(null);
@@ -169,10 +171,11 @@ export default function InterviewPage() {
 
   // WebSocket connection and message handling
   useEffect(() => {
-    if (!candidateEmail) return; // no email in the invite link
-    const ws = new WebSocket(
-      `ws://localhost:5000?portalId=${portalId}&email=${encodeURIComponent(candidateEmail)}`
-    );
+    if (!candidateToken && !candidateEmail) return; // no token or email in the invite link
+    const wsQuery = candidateToken
+      ? `portalId=${portalId}&token=${candidateToken}`
+      : `portalId=${portalId}&email=${encodeURIComponent(candidateEmail)}`;
+    const ws = new WebSocket(`ws://localhost:5000?${wsQuery}`);
     wsRef.current = ws;
 
     ws.onopen = () => {
@@ -230,7 +233,7 @@ export default function InterviewPage() {
       audioCtxRef.current?.close();
       if (speakingTimerRef.current) clearTimeout(speakingTimerRef.current);
     };
-  }, [portalId, candidateEmail, startAudioCapture, playAudioChunk]);
+  }, [portalId, candidateToken, candidateEmail, startAudioCapture, playAudioChunk]);
 
   // Scroll to latest conversation item
   useEffect(() => {
@@ -253,12 +256,12 @@ export default function InterviewPage() {
 
   const isConnecting = interviewState === "connecting";
 
-  if (!candidateEmail) {
+  if (!candidateToken && !candidateEmail) {
     return (
       <div className="flex h-screen items-center justify-center bg-gray-50">
         <div className="text-center space-y-2">
           <p className="text-lg font-semibold text-gray-800">Invalid invite link</p>
-          <p className="text-sm text-gray-500">This link is missing a candidate email. Please use the link sent to your inbox.</p>
+          <p className="text-sm text-gray-500">This link is missing an interview token. Please use the private link sent to your inbox.</p>
         </div>
       </div>
     );

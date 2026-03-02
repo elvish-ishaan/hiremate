@@ -12,3 +12,7 @@ const emailQueue = new Queue(EMAIL_QUEUE, { connection })
 export const enqueueInviteEmail = (email: string, portalId: string) => {
     return emailQueue.add("candidate_invite", { email, portalId })
 }
+
+export const enqueueInterviewInvite = (email: string, name: string, portalId: string, token: string) => {
+    return emailQueue.add("interview_invite", { email, name, portalId, token })
+}

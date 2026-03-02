@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
-// import { UploadCloud } from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
 import { API_URL } from "@/app/constant";
@@ -27,13 +26,9 @@ export default function CreatePortalPage() {
   });
 
   useEffect(() => {
-    const org = JSON.parse(getStorageItem('organization') || "{}");
-    setForm(prev => ({ ...prev, organizationId: org.id || "" }));
+    const org = JSON.parse(getStorageItem("organization") || "{}");
+    setForm((prev) => ({ ...prev, organizationId: org.id || "" }));
   }, []);
-  const [candidates, setCandidates] = useState<string[]>([]);
-  const [candidateInput, setCandidateInput] = useState("");
-
-  // const [csvFile, setCsvFile] = useState<File | null>(null);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -41,20 +36,11 @@ export default function CreatePortalPage() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  // const handleCsvUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-  //   if (e.target.files && e.target.files.length > 0) {
-  //     setCsvFile(e.target.files[0]);
-  //   }
-  // };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    //send portal data wiht org id
-    const parsedCandidates = candidateInput.split(",").map((s) => s.trim()).filter(Boolean);
     const portalData = {
       ...form,
-      candidates: parsedCandidates,
       skillsRequired: form.skillsRequired
         .split(",")
         .map((s) => s.trim())
@@ -62,30 +48,29 @@ export default function CreatePortalPage() {
     };
 
     try {
-        const res = await axios.post(`${API_URL}/portal/create-portal`, portalData, {
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${getStorageItem("token")}`
-          },
-        });
-        if (!res.data.success) {
-            toast.error(res.data.message);
-        }
-        //clear form
-        setForm({
-            title: "",
-            description: "",
-            role: "",
-            jobType: "",
-            department: "",
-            skillsRequired: "",
-            organizationId: "",
-        });
-        setCandidates([]);
-        setCandidateInput("");
-        toast.success("Portal created successfully");
-    } catch (error) {
-        toast.error("Something went wrong");
+      const res = await axios.post(`${API_URL}/portal/create-portal`, portalData, {
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getStorageItem("token")}`,
+        },
+      });
+      if (!res.data.success) {
+        toast.error(res.data.message);
+        return;
+      }
+      setForm({
+        title: "",
+        description: "",
+        role: "",
+        jobType: "",
+        department: "",
+        skillsRequired: "",
+        organizationId: "",
+      });
+      toast.success("Portal created successfully");
+      router.push("/portals");
+    } catch {
+      toast.error("Something went wrong");
     }
   };
 
@@ -104,7 +89,7 @@ export default function CreatePortalPage() {
         <Card className="p-6 space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <Label className=" my-2" htmlFor="title">Title</Label>
+              <Label className="my-2" htmlFor="title">Title</Label>
               <Input
                 id="title"
                 name="title"
@@ -115,7 +100,7 @@ export default function CreatePortalPage() {
               />
             </div>
             <div>
-              <Label className=" my-2" htmlFor="role">Role</Label>
+              <Label className="my-2" htmlFor="role">Role</Label>
               <Input
                 id="role"
                 name="role"
@@ -126,7 +111,7 @@ export default function CreatePortalPage() {
               />
             </div>
             <div>
-              <Label className=" my-2" htmlFor="department">Department</Label>
+              <Label className="my-2" htmlFor="department">Department</Label>
               <Input
                 id="department"
                 name="department"
@@ -137,7 +122,7 @@ export default function CreatePortalPage() {
               />
             </div>
             <div>
-              <Label className=" my-2" htmlFor="jobType">Job Type</Label>
+              <Label className="my-2" htmlFor="jobType">Job Type</Label>
               <Input
                 id="jobType"
                 name="jobType"
@@ -150,7 +135,7 @@ export default function CreatePortalPage() {
           </div>
 
           <div>
-            <Label className=" my-2" htmlFor="skillsRequired">Skills Required</Label>
+            <Label className="my-2" htmlFor="skillsRequired">Skills Required</Label>
             <Input
               id="skillsRequired"
               name="skillsRequired"
@@ -161,7 +146,7 @@ export default function CreatePortalPage() {
           </div>
 
           <div>
-            <Label className=" my-2" htmlFor="description">Description</Label>
+            <Label className="my-2" htmlFor="description">Description</Label>
             <Textarea
               id="description"
               name="description"
@@ -170,33 +155,6 @@ export default function CreatePortalPage() {
               placeholder="Short description of the job portal"
             />
           </div>
-        </Card>
-
-        <Card className="p-6 space-y-5">
-          <h2 className="text-lg font-medium">Candidate Input</h2>
-
-          <div>
-            <Label className=" my-2" htmlFor="candidates">Candidate Emails</Label>
-            <Input
-              id="candidate"
-              name="candidates"
-              value={candidateInput}
-              onChange={(e) => setCandidateInput(e.target.value)}
-              placeholder="Comma-separated emails, e.g., user1@mail.com, user2@mail.com"
-            />
-          </div>
-
-          {/* <div>
-            <Label className=" my-2" htmlFor="csvFile">Upload CSV</Label>
-            <div className="flex items-center gap-4">
-              <Input id="csvFile" type="file" accept=".csv" onChange={handleCsvUpload} />
-              {csvFile && (
-                <span className="text-sm text-muted-foreground">
-                  {csvFile.name}
-                </span>
-              )}
-            </div>
-          </div> */}
         </Card>
 
         <Button type="submit" className="w-full text-base py-5 rounded-xl">

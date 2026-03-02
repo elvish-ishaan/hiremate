@@ -5,7 +5,29 @@ import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Plus, Copy, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Plus,
+  Copy,
+  Check,
+  Users,
+  Link,
+  Pencil,
+  Trash2,
+  Download,
+  ToggleLeft,
+  ToggleRight,
+} from "lucide-react";
 import { toast } from "sonner";
 import axios from "axios";
 import { API_URL } from "@/app/constant";
@@ -24,14 +46,39 @@ const PortalsPage = () => {
   const [portals, setPortals] = useState<Portal[]>([]);
   const [orgId, setOrgId] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [expandedPortal, setExpandedPortal] = useState<string | null>(null);
-  const [copiedEmail, setCopiedEmail] = useState<string | null>(null);
+  const [copiedApplyLink, setCopiedApplyLink] = useState<string | null>(null);
 
-  const copyInviteLink = (portalId: string, email: string) => {
-    const link = `${window.location.origin}/invite/${portalId}?email=${encodeURIComponent(email)}`;
+  // Candidates modal
+  const [candidatesPortal, setCandidatesPortal] = useState<Portal | null>(null);
+  const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [loadingCandidates, setLoadingCandidates] = useState(false);
+
+  // Edit modal
+  const [editPortal, setEditPortal] = useState<Portal | null>(null);
+  const [editForm, setEditForm] = useState({
+    title: "",
+    role: "",
+    department: "",
+    jobType: "",
+    skillsRequired: "",
+    description: "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  // Delete confirm
+  const [deletePortalId, setDeletePortalId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Toggle loading
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  const token = () => getStorageItem("token");
+
+  const copyApplyLink = (portalId: string) => {
+    const link = `${window.location.origin}/apply/${portalId}`;
     navigator.clipboard.writeText(link);
-    setCopiedEmail(email);
-    setTimeout(() => setCopiedEmail(null), 2000);
+    setCopiedApplyLink(portalId);
+    setTimeout(() => setCopiedApplyLink(null), 2000);
   };
 
   useEffect(() => {
@@ -44,37 +91,138 @@ const PortalsPage = () => {
       setIsLoading(false);
       return;
     }
-    const fetchPortals = async () => {
-      try {
-        const res = await axios.get(`${API_URL}/portal/${orgId}/list-portals`, {
-          headers: {
-            Authorization: `Bearer ${getStorageItem("token")}`,
-          },
-        });
-
-        if (!res.data.success) {
-          toast.error(res.data.message);
-        }
-
-        setPortals(res.data?.portals || []);
-      } catch (error) {
-        toast.error("Failed to fetch portals");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchPortals();
   }, [orgId]);
 
+  const fetchPortals = async () => {
+    setIsLoading(true);
+    try {
+      const res = await axios.get(`${API_URL}/portal/${orgId}/list-portals`, {
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      if (!res.data.success) toast.error(res.data.message);
+      setPortals(res.data?.portals || []);
+    } catch {
+      toast.error("Failed to fetch portals");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // --- Candidates modal ---
+  const openCandidatesModal = async (portal: Portal) => {
+    setCandidatesPortal(portal);
+    setLoadingCandidates(true);
+    try {
+      const res = await axios.get(`${API_URL}/candidate/${portal.id}/candidates`, {
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      setCandidates(res.data?.data || []);
+    } catch {
+      toast.error("Failed to load candidates");
+    } finally {
+      setLoadingCandidates(false);
+    }
+  };
+
+  // --- Toggle open/closed ---
+  const togglePortalStatus = async (portal: Portal) => {
+    setTogglingId(portal.id);
+    try {
+      const res = await axios.put(
+        `${API_URL}/portal/${portal.id}`,
+        { isOpen: !portal.isOpen },
+        { headers: { Authorization: `Bearer ${token()}` } }
+      );
+      if (res.data.success) {
+        setPortals((prev) =>
+          prev.map((p) => (p.id === portal.id ? { ...p, isOpen: !portal.isOpen } : p))
+        );
+        toast.success(`Portal ${!portal.isOpen ? "opened" : "closed"}`);
+      }
+    } catch {
+      toast.error("Failed to update portal status");
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  // --- Edit modal ---
+  const openEditModal = (portal: Portal) => {
+    setEditPortal(portal);
+    setEditForm({
+      title: portal.title,
+      role: portal.role,
+      department: portal.department,
+      jobType: portal.jobType,
+      skillsRequired: portal.skillsRequired.join(", "),
+      description: portal.description || "",
+    });
+  };
+
+  const handleEditSubmit = async () => {
+    if (!editPortal) return;
+    setSaving(true);
+    try {
+      const res = await axios.put(
+        `${API_URL}/portal/${editPortal.id}`,
+        {
+          ...editForm,
+          skillsRequired: editForm.skillsRequired
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean),
+        },
+        { headers: { Authorization: `Bearer ${token()}` } }
+      );
+      if (res.data.success) {
+        setPortals((prev) =>
+          prev.map((p) =>
+            p.id === editPortal.id ? { ...p, ...res.data.data } : p
+          )
+        );
+        toast.success("Portal updated");
+        setEditPortal(null);
+      } else {
+        toast.error(res.data.message);
+      }
+    } catch {
+      toast.error("Failed to update portal");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // --- Delete ---
+  const handleDelete = async () => {
+    if (!deletePortalId) return;
+    setDeleting(true);
+    try {
+      const res = await axios.delete(`${API_URL}/portal/${deletePortalId}`, {
+        headers: { Authorization: `Bearer ${token()}` },
+      });
+      if (res.data.success) {
+        setPortals((prev) => prev.filter((p) => p.id !== deletePortalId));
+        toast.success("Portal deleted");
+        setDeletePortalId(null);
+      } else {
+        toast.error(res.data.message);
+      }
+    } catch {
+      toast.error("Failed to delete portal");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
-      {/* Header + Create Button */}
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-primary">All Job Portals</h1>
           <p className="text-sm text-muted-foreground">
-            These are the portals currently configured across your organizations.
+            Manage your hiring portals across your organization.
           </p>
         </div>
         <Button onClick={() => router.push("/portals/createPortal")}>
@@ -100,30 +248,24 @@ const PortalsPage = () => {
               </Card>
             ))
           : portals.map((portal) => (
-              <Card key={portal.id} className="hover:shadow-md transition-shadow">
+              <Card key={portal.id} className="hover:shadow-md transition-shadow flex flex-col">
                 <CardHeader className="space-y-1">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-base font-semibold">
                       {portal.title}
                     </CardTitle>
                     <Badge
-                      variant={portal.status === "opened" ? "default" : "outline"}
-                      className={
-                        portal.status === "closed"
-                          ? "text-red-500 border-red-500"
-                          : ""
-                      }
+                      variant={portal.isOpen ? "default" : "outline"}
+                      className={!portal.isOpen ? "text-red-500 border-red-500" : ""}
                     >
-                      {portal.status === "opened" ? "Opened" : "Closed"}
+                      {portal.isOpen ? "Open" : "Closed"}
                     </Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground">
-                    • {portal.jobType}
-                  </p>
+                  <p className="text-sm text-muted-foreground">• {portal.jobType}</p>
                 </CardHeader>
 
-                <CardContent className="space-y-2 text-sm">
-                  <p>{portal.description}</p>
+                <CardContent className="space-y-2 text-sm flex-1">
+                  <p className="text-muted-foreground line-clamp-2">{portal.description}</p>
                   <div className="flex flex-wrap gap-2">
                     {portal.skillsRequired.map((skill) => (
                       <Badge key={skill} variant="secondary">
@@ -133,49 +275,227 @@ const PortalsPage = () => {
                   </div>
                   <div className="text-xs text-muted-foreground space-y-1 pt-2">
                     <p>Department: {portal.department}</p>
-                    <p>Candidates: {portal.candidates.length}</p>
                     <p>Created: {formatDate(portal.createdAt)}</p>
                     <p>Updated: {formatDate(portal.updatedAt)}</p>
                   </div>
+                  {(portal._count?.applicants ?? 0) > 0 && (
+                    <button
+                      onClick={() => openCandidatesModal(portal)}
+                      className="flex items-center gap-1 text-xs text-purple-600 font-medium pt-1 hover:underline"
+                    >
+                      <Users className="w-3 h-3" />
+                      {portal._count!.applicants} applied — view details
+                    </button>
+                  )}
                 </CardContent>
+
                 <CardFooter className="flex flex-col gap-2 items-start">
-                  <div className="flex gap-2 w-full">
+                  <div className="flex gap-2 w-full flex-wrap">
                     <Button
                       onClick={() => router.push(`/reports/${portal.id}`)}
-                      variant="outline" className="text-sm">
-                      See Reports
+                      variant="outline"
+                      className="text-sm"
+                    >
+                      Reports
                     </Button>
-                    {portal.candidates.length > 0 && (
-                      <Button
-                        variant="outline"
-                        className="text-sm gap-1"
-                        onClick={() => setExpandedPortal(expandedPortal === portal.id ? null : portal.id)}
-                      >
-                        Invite Links
-                        {expandedPortal === portal.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-                      </Button>
-                    )}
+                    <Button
+                      variant="outline"
+                      className="text-sm gap-1"
+                      onClick={() => copyApplyLink(portal.id)}
+                    >
+                      {copiedApplyLink === portal.id ? (
+                        <><Check className="w-3 h-3 text-green-500" /> Copied!</>
+                      ) : (
+                        <><Link className="w-3 h-3" /> Apply Link</>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="text-sm gap-1"
+                      onClick={() => openCandidatesModal(portal)}
+                    >
+                      <Users className="w-3 h-3" /> Applicants
+                    </Button>
                   </div>
-                  {expandedPortal === portal.id && (
-                    <div className="w-full space-y-1 pt-1">
-                      {portal.candidates.map((email: string) => (
-                        <div key={email} className="flex items-center justify-between gap-2 text-xs bg-muted rounded px-2 py-1.5">
-                          <span className="truncate text-muted-foreground">{email}</span>
-                          <button
-                            onClick={() => copyInviteLink(portal.id, email)}
-                            className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
-                            title="Copy invite link"
-                          >
-                            {copiedEmail === email ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <div className="flex gap-2 w-full flex-wrap">
+                    <Button
+                      variant="outline"
+                      className="text-sm gap-1"
+                      onClick={() => openEditModal(portal)}
+                    >
+                      <Pencil className="w-3 h-3" /> Edit
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="text-sm gap-1"
+                      disabled={togglingId === portal.id}
+                      onClick={() => togglePortalStatus(portal)}
+                    >
+                      {portal.isOpen ? (
+                        <><ToggleRight className="w-4 h-4 text-green-500" /> Close</>
+                      ) : (
+                        <><ToggleLeft className="w-4 h-4 text-muted-foreground" /> Open</>
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="text-sm gap-1 text-red-500 hover:text-red-600"
+                      onClick={() => setDeletePortalId(portal.id)}
+                    >
+                      <Trash2 className="w-3 h-3" /> Delete
+                    </Button>
+                  </div>
                 </CardFooter>
               </Card>
             ))}
       </div>
+
+      {/* --- Candidates Modal --- */}
+      <Dialog open={!!candidatesPortal} onOpenChange={(o) => { if (!o) { setCandidatesPortal(null); setCandidates([]); } }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              Applicants — {candidatesPortal?.title}
+            </DialogTitle>
+          </DialogHeader>
+          {loadingCandidates ? (
+            <div className="space-y-3 py-4">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full rounded-lg" />
+              ))}
+            </div>
+          ) : candidates.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">No applicants yet.</p>
+          ) : (
+            <ScrollArea className="max-h-[60vh]">
+              <div className="space-y-3 pr-2">
+                {candidates.map((c) => (
+                  <div key={c.id} className="border rounded-lg p-4 space-y-1.5 text-sm">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-semibold">{c.name}</p>
+                        <p className="text-muted-foreground">{c.email}</p>
+                      </div>
+                      <a
+                        href={c.resumeUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="shrink-0"
+                      >
+                        <Button variant="outline" size="sm" className="gap-1 text-xs">
+                          <Download className="w-3 h-3" /> Resume
+                        </Button>
+                      </a>
+                    </div>
+                    {c.phone && <p className="text-xs text-muted-foreground">Phone: {c.phone}</p>}
+                    {c.linkedIn && (
+                      <p className="text-xs text-muted-foreground">
+                        LinkedIn:{" "}
+                        <a href={c.linkedIn} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">
+                          {c.linkedIn}
+                        </a>
+                      </p>
+                    )}
+                    {c.coverLetter && (
+                      <details className="text-xs text-muted-foreground">
+                        <summary className="cursor-pointer font-medium text-foreground">Cover Letter</summary>
+                        <p className="mt-1 whitespace-pre-wrap">{c.coverLetter}</p>
+                      </details>
+                    )}
+                    <p className="text-xs text-muted-foreground">Applied: {formatDate(c.createdAt)}</p>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* --- Edit Modal --- */}
+      <Dialog open={!!editPortal} onOpenChange={(o) => { if (!o) setEditPortal(null); }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Portal</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="edit-title">Title</Label>
+                <Input
+                  id="edit-title"
+                  value={editForm.title}
+                  onChange={(e) => setEditForm((f) => ({ ...f, title: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-role">Role</Label>
+                <Input
+                  id="edit-role"
+                  value={editForm.role}
+                  onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-department">Department</Label>
+                <Input
+                  id="edit-department"
+                  value={editForm.department}
+                  onChange={(e) => setEditForm((f) => ({ ...f, department: e.target.value }))}
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-jobType">Job Type</Label>
+                <Input
+                  id="edit-jobType"
+                  value={editForm.jobType}
+                  onChange={(e) => setEditForm((f) => ({ ...f, jobType: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="edit-skills">Skills Required</Label>
+              <Input
+                id="edit-skills"
+                value={editForm.skillsRequired}
+                onChange={(e) => setEditForm((f) => ({ ...f, skillsRequired: e.target.value }))}
+                placeholder="Comma-separated"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-description">Description</Label>
+              <Textarea
+                id="edit-description"
+                value={editForm.description}
+                onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditPortal(null)}>Cancel</Button>
+            <Button onClick={handleEditSubmit} disabled={saving}>
+              {saving ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* --- Delete Confirm --- */}
+      <Dialog open={!!deletePortalId} onOpenChange={(o) => { if (!o) setDeletePortalId(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Delete Portal</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This will permanently delete the portal and all its data. This action cannot be undone.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeletePortalId(null)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+              {deleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

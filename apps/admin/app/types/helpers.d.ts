@@ -7,7 +7,7 @@ interface Portal {
     candidates: string[];
     jobType: string;
     department: string;
-    status: string;
+    isOpen: boolean;
     createdAt: string;
     updatedAt: string;
     organization: {
@@ -15,4 +15,18 @@ interface Portal {
         name: string;
         logo: string | null;
     };
+    _count?: {
+        applicants: number;
+    };
+}
+
+interface Candidate {
+    id: string;
+    name: string;
+    email: string;
+    phone: string | null;
+    linkedIn: string | null;
+    coverLetter: string | null;
+    resumeUrl: string;
+    createdAt: string;
 }

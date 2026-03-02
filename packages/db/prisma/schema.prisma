@@ -42,10 +42,29 @@ model Portal {
   candidates     String[]
   jobType        String
   department     String
+  isOpen         Boolean      @default(true)
   organization   Organization @relation(fields: [organizationId], references: [id])
   organizationId String
+  applicants     Candidate[]
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @default(now()) @updatedAt
+}
+
+//candidate model
+model Candidate {
+  id             String   @id @default(uuid())
+  name           String
+  email          String
+  phone          String?
+  linkedIn       String?
+  coverLetter    String?
+  resumeUrl      String
+  resumeText     String
+  interviewToken String   @unique @default(uuid())
+  portal         Portal   @relation(fields: [portalId], references: [id])
+  portalId       String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 //session model

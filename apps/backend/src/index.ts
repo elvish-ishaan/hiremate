@@ -5,6 +5,7 @@ import portalRouter from './routes/portal'
 import organizationRouter from './routes/organization'
 import authRouter from './routes/auth'
 import reportRouter from './routes/report'
+import candidateRouter from './routes/candidate'
 
 import cors from 'cors'
 
@@ -20,6 +21,7 @@ app.use('/api/auth', authRouter)
 app.use('/api/portal', portalRouter)
 app.use("/api/organization", organizationRouter)
 app.use("/api/report", reportRouter)
+app.use("/api/candidate", candidateRouter)
 
 app.get('/', (req, res) => {
   res.send('Hello World!')

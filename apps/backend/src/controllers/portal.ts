@@ -1,57 +1,35 @@
 import { Request, Response } from "express"
 import { prisma } from "@repo/db"
-import { enqueueInviteEmail } from "../lib/emailQueue"
 
 export const createPortal = async (req: Request, res: Response) => {
     try {
-        //add validation
-        //save to db
-        const { title, description, role, skillsRequired, candidates, jobType, department, organizationId } = req.body
-        console.log(req.body, "body........");
-        try {
-            const portal = await prisma.portal.create({
-                data: {
-                    title,
-                    description,
-                    role,
-                    skillsRequired,
-                    candidates,
-                    jobType,
-                    department,
-                    organizationId
-                }
-            })
-
-            // Enqueue invite emails — email-service processes them asynchronously
-            const candidateEmails = portal.candidates as string[]
-            for (const email of candidateEmails) {
-                enqueueInviteEmail(email, portal.id).catch((err) =>
-                    console.error(`[portal] failed to enqueue invite for ${email}:`, err)
-                )
+        const { title, description, role, skillsRequired, jobType, department, organizationId } = req.body
+        const portal = await prisma.portal.create({
+            data: {
+                title,
+                description,
+                role,
+                skillsRequired,
+                candidates: [],
+                jobType,
+                department,
+                organizationId
             }
-            res.status(200).json({
-                success: true,
-                message: "portal created successfully",
-                data: portal
-            })
-            return
-        } catch (error) {
-            console.log(error, "error in saving db")
-            res.status(500).json({
-                success: false,
-                message: "internal server error"
-            })
-        }
+        })
+        res.status(200).json({
+            success: true,
+            message: "portal created successfully",
+            data: portal
+        })
     } catch (error) {
-        res.status(500).json({ 
+        console.error(error, "error in createPortal")
+        res.status(500).json({
             success: false,
             message: "internal server error"
-         })
+        })
     }
 }
 
-
-//list all portals
 export const listPortals = async (req: Request, res: Response) => {
     try {
         const portals = await prisma.portal.findMany({
@@ -59,6 +37,9 @@ export const listPortals = async (req: Request, res: Response) => {
                 organizationId: req.params.orgId,
             },
             orderBy: [{ createdAt: "desc" }],
+            include: {
+                _count: { select: { applicants: true } },
+            },
         })
         res.status(200).json({
             success: true,
@@ -73,7 +54,6 @@ export const listPortals = async (req: Request, res: Response) => {
     }
 }
 
-// get portal by id
 export const getPortalById = async (req: Request, res: Response) => {
     try {
         const portal = await prisma.portal.findUnique({
@@ -92,25 +72,23 @@ export const getPortalById = async (req: Request, res: Response) => {
             message: "internal server error"
         })
     }
-}   
+}
 
-// update portal by id
 export const updatePortalById = async (req: Request, res: Response) => {
     try {
-        const { title, description, role, skillsRequired, candidates, jobType, department, organizationId } = req.body
+        const { title, description, role, skillsRequired, jobType, department, isOpen } = req.body
         const portal = await prisma.portal.update({
             where: {
-                id: req.params.id
+                id: req.params.portalId
             },
             data: {
                 title,
                 description,
                 role,
                 skillsRequired,
-                candidates,
                 jobType,
                 department,
-                organizationId
+                ...(isOpen !== undefined && { isOpen }),
             }
         })
         res.status(200).json({
@@ -128,15 +106,14 @@ export const updatePortalById = async (req: Request, res: Response) => {
 
 export const deletePortalById = async (req: Request, res: Response) => {
     try {
-        const portal = await prisma.portal.delete({
+        await prisma.portal.delete({
             where: {
-                id: req.params.id
+                id: req.params.portalId
             }
         })
         res.status(200).json({
             success: true,
             message: "portal deleted successfully",
-            data: portal
         })
     } catch (error) {
         res.status(500).json({

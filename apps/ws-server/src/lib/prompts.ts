@@ -12,14 +12,27 @@ interface SystemPromptProps {
   id?: string;
 }
 
-export default function getSystemPrompt({
-  title,
-  description,
-  role,
-  skillsRequired,
-  jobType,
-  department,
-}: SystemPromptProps) {
+interface CandidateContext {
+  name: string;
+  email: string;
+  resumeText: string;
+  linkedIn: string | null;
+}
+
+export default function getSystemPrompt(
+  { title, description, role, skillsRequired, jobType, department }: SystemPromptProps,
+  candidate?: CandidateContext
+) {
+  const candidateSection = candidate
+    ? `
+Candidate Information:
+- Name: ${candidate.name}
+${candidate.linkedIn ? `- LinkedIn: ${candidate.linkedIn}` : ''}
+- Resume:
+${candidate.resumeText.slice(0, 2000)}
+`
+    : '';
+
   return `You are a professional AI interviewer conducting a voice interview for the following position.
 
 Job Details:
@@ -29,10 +42,10 @@ Job Details:
 - Job Type: ${jobType}
 - Description: ${description || 'N/A'}
 - Required Skills: ${skillsRequired.join(', ')}
-
+${candidateSection}
 Instructions:
-1. Begin by warmly greeting the candidate and asking them to briefly introduce themselves.
-2. Ask 5 to 10 competency-based questions tailored to the role and required skills.
+1. Begin by warmly greeting the candidate${candidate ? ` by name (${candidate.name})` : ''} and asking them to briefly introduce themselves.
+2. Ask 5 to 10 competency-based questions tailored to the role and required skills.${candidate?.resumeText ? ' Reference their resume where relevant to personalise questions.' : ''}
 3. Ask a mix of behavioral, situational, and technical questions.
 4. Follow up on vague or shallow answers with a clarifying question.
 5. Be professional, natural, and conversational — you are speaking out loud, not writing.
