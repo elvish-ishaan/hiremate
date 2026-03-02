@@ -5,9 +5,12 @@
   "scripts": {
     "build": "npx esbuild ./src/index.ts --bundle --platform=node --outfile=dist/index.js",
     "start": "node dist/index.js",
-    "dev": "npm run build && node dist/index.js"
+    "dev": "tsx watch src/index.ts"
   },
   "type": "commonjs",
+  "devDependencies": {
+    "tsx": "^4.19.3"
+  },
   "dependencies": {
     "@types/nodemailer": "^6.4.17",
     "bullmq": "^5.56.0",
