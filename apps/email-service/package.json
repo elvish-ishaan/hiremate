@@ -1,0 +1,18 @@
+{
+  "name": "email-service",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "npx esbuild ./src/index.ts --bundle --platform=node --outfile=dist/index.js",
+    "start": "node dist/index.js",
+    "dev": "npm run build && node dist/index.js"
+  },
+  "type": "commonjs",
+  "dependencies": {
+    "@types/nodemailer": "^6.4.17",
+    "bullmq": "^5.56.0",
+    "dotenv": "^16.4.5",
+    "ioredis": "^5.6.1",
+    "nodemailer": "^7.0.5"
+  }
+}

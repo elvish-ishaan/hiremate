@@ -1,6 +1,6 @@
 import { Request, Response } from "express"
 import { prisma } from "@repo/db"
-import { sendMail } from "../lib/mailer"
+import { enqueueInviteEmail } from "../lib/emailQueue"
 
 export const createPortal = async (req: Request, res: Response) => {
     try {
@@ -22,15 +22,12 @@ export const createPortal = async (req: Request, res: Response) => {
                 }
             })
 
-            //TODO: USE ANY QUEUE HERE AND MAKE OTHER SERVICE FOR EMAIL
-            //send demo link to every candidate
-            try {
-                const candidateEmail = portal.candidates
-                for (let i = 0; i < candidateEmail.length; i++) {
-                    await sendMail(candidateEmail[i] as string, portal.id)
-            }
-            } catch (error) {
-                console.log(error, "error in sending mail")
+            // Enqueue invite emails — email-service processes them asynchronously
+            const candidateEmails = portal.candidates as string[]
+            for (const email of candidateEmails) {
+                enqueueInviteEmail(email, portal.id).catch((err) =>
+                    console.error(`[portal] failed to enqueue invite for ${email}:`, err)
+                )
             }
             res.status(200).json({
                 success: true,
