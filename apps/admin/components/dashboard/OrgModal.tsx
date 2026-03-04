@@ -58,7 +58,7 @@ export const OrgModal = ({
       toast.success("Organization created successfully");
       setForm({ name: "", logo: "" });
       onOpenChange(false); // close modal
-    } catch (error) {
+    } catch {
       toast.error("Something went wrong");
     }finally{
         setLoading(false)

@@ -9,7 +9,6 @@ import {
   LayoutDashboard,
   Settings,
   LogOut,
-  ReceiptEuro,
   Home,
 } from "lucide-react";
 import { toast } from "sonner";

@@ -18,7 +18,6 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Plus,
-  Copy,
   Check,
   Users,
   Link,

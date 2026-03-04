@@ -3,17 +3,14 @@
 import { API_URL } from "@/app/constant"
 import { CandidateReports } from "@/components/reports/ReportRen"
 import axios from "axios"
+import type React from "react"
 import { use, useEffect, useState } from "react"
 
-interface Report {
-  id: string
-  name: string
-  score: number
-}
+type ReportsType = React.ComponentProps<typeof CandidateReports>['reports']
 
 export default function Page({ params }: { params: Promise<{ portalId: string }> }) {
   const { portalId } = use(params)
-  const [reports, setReports] = useState<any[]>([])
+  const [reports, setReports] = useState<ReportsType>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 

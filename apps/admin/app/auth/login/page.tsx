@@ -35,7 +35,7 @@ export default function LoginPage() {
     toast.success("Logged In")
     //redirect to home page
     router.push("/dashboard")
-    } catch (error) {
+    } catch {
       toast.error("something went wrong");
     }finally{
       setLoading(false)

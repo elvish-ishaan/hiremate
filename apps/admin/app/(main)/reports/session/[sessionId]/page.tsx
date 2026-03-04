@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import axios from 'axios'
-import { format } from 'date-fns'
 import { API_URL } from '@/app/constant'
 
 import {

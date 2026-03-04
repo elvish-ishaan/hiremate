@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,9 +11,16 @@ import { toast } from "sonner";
 import axios from "axios";
 import { API_URL } from "@/app/constant";
 
-
 export default function JoinPortalPage() {
- const searchParams = useSearchParams();
+  return (
+    <Suspense>
+      <JoinPortalContent />
+    </Suspense>
+  );
+}
+
+function JoinPortalContent() {
+  const searchParams = useSearchParams();
   const portalId = searchParams.get("portalId");
   const router = useRouter();
 

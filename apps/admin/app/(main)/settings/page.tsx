@@ -6,9 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
-import { toast } from "sonner";
-import axios from "axios";
-import { API_URL } from "@/app/constant";
 
 export default function SettingsPage() {
   const [tab, setTab] = useState("account");

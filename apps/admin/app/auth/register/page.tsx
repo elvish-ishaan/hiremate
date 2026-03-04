@@ -37,7 +37,7 @@ export default function RegisterPage() {
       toast.success("user created successfully, please login now");
       //redirect to login page
       router.push("/auth/login");
-    } catch (error) {
+    } catch {
       toast.error("something went wrong");
     }finally{
       setLoading(false)

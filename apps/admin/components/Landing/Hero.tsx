@@ -1,5 +1,4 @@
 import React from 'react'
-import HeroVideoDialog from '../magicui/hero-video-dialog'
 import { Button } from '../ui/button'
 import { Beamer } from './Beamer'
 import { MorphingText } from '../magicui/morphing-text'
