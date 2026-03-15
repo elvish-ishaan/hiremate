@@ -1,6 +1,6 @@
-import express from 'express'
 import dotenv from 'dotenv'
 dotenv.config()
+import express from 'express'
 import portalRouter from './routes/portal'
 import organizationRouter from './routes/organization'
 import authRouter from './routes/auth'

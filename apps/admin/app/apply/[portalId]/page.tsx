@@ -119,7 +119,7 @@ export default function ApplyPage() {
   if (portalLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -127,18 +127,18 @@ export default function ApplyPage() {
   if (portalError || !portal) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <p className="text-gray-500">{portalError || "Portal not found."}</p>
+        <p className="text-muted-foreground">{portalError || "Portal not found."}</p>
       </div>
     );
   }
 
   if (submitted) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
-        <div className="bg-white rounded-2xl shadow-md p-10 text-center max-w-md space-y-4">
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="bg-card rounded-2xl shadow-md p-10 text-center max-w-md space-y-4 border border-border">
           <CheckCircle className="w-14 h-14 text-green-500 mx-auto" />
-          <h2 className="text-2xl font-bold text-gray-900">Application Submitted!</h2>
-          <p className="text-gray-600">
+          <h2 className="text-2xl font-bold text-foreground">Application Submitted!</h2>
+          <p className="text-muted-foreground">
             Thank you for applying. Check your email for a private interview link.
           </p>
         </div>
@@ -147,19 +147,19 @@ export default function ApplyPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
+    <div className="min-h-screen bg-background py-12 px-4">
       <div className="max-w-2xl mx-auto space-y-8">
         {/* Portal Info */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+        <div className="bg-card rounded-2xl shadow-sm border border-border p-8">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">{portal.title}</h1>
-              <p className="text-gray-500 mt-1">{portal.role} · {portal.department}</p>
+              <h1 className="text-2xl font-bold text-foreground">{portal.title}</h1>
+              <p className="text-muted-foreground mt-1">{portal.role} · {portal.department}</p>
             </div>
             <Badge variant="secondary">{portal.jobType}</Badge>
           </div>
           {portal.description && (
-            <p className="mt-4 text-gray-600 text-sm leading-relaxed">{portal.description}</p>
+            <p className="mt-4 text-muted-foreground text-sm leading-relaxed">{portal.description}</p>
           )}
           {portal.skillsRequired.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2">
@@ -171,77 +171,77 @@ export default function ApplyPage() {
         </div>
 
         {/* Application Form */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">Apply for this position</h2>
+        <div className="bg-card rounded-2xl shadow-sm border border-border p-8">
+          <h2 className="text-xl font-semibold text-foreground mb-6">Apply for this position</h2>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Full Name <span className="text-red-500">*</span>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Full Name <span className="text-destructive">*</span>
               </label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Jane Smith"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full border border-input bg-background text-foreground rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent placeholder:text-muted-foreground"
               />
-              {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
+              {errors.name && <p className="text-destructive text-xs mt-1">{errors.name}</p>}
             </div>
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email <span className="text-red-500">*</span>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Email <span className="text-destructive">*</span>
               </label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="jane@example.com"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full border border-input bg-background text-foreground rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent placeholder:text-muted-foreground"
               />
-              {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
+              {errors.email && <p className="text-destructive text-xs mt-1">{errors.email}</p>}
             </div>
 
             {/* Phone + LinkedIn side by side */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                <label className="block text-sm font-medium text-foreground mb-1">Phone</label>
                 <input
                   type="tel"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="+1 555 000 0000"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full border border-input bg-background text-foreground rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent placeholder:text-muted-foreground"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">LinkedIn URL</label>
+                <label className="block text-sm font-medium text-foreground mb-1">LinkedIn URL</label>
                 <input
                   type="url"
                   value={linkedIn}
                   onChange={(e) => setLinkedIn(e.target.value)}
                   placeholder="https://linkedin.com/in/..."
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  className="w-full border border-input bg-background text-foreground rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent placeholder:text-muted-foreground"
                 />
               </div>
             </div>
 
             {/* Resume Upload */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Resume / CV <span className="text-red-500">*</span>
-                <span className="text-gray-400 font-normal"> (PDF only, max 5MB)</span>
+              <label className="block text-sm font-medium text-foreground mb-1">
+                Resume / CV <span className="text-destructive">*</span>
+                <span className="text-muted-foreground font-normal"> (PDF only, max 5MB)</span>
               </label>
               {resume ? (
-                <div className="flex items-center gap-3 border border-green-300 bg-green-50 rounded-lg px-3 py-2">
-                  <span className="text-sm text-green-700 flex-1 truncate">{resume.name}</span>
+                <div className="flex items-center gap-3 border border-green-300 bg-green-50 dark:bg-green-950/20 dark:border-green-800 rounded-lg px-3 py-2">
+                  <span className="text-sm text-green-700 dark:text-green-400 flex-1 truncate">{resume.name}</span>
                   <button
                     type="button"
                     onClick={() => { setResume(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
-                    className="text-green-600 hover:text-red-500 transition-colors"
+                    className="text-green-600 dark:text-green-400 hover:text-destructive transition-colors"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -250,7 +250,7 @@ export default function ApplyPage() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="w-full border-2 border-dashed border-gray-300 rounded-lg px-3 py-6 text-sm text-gray-500 hover:border-purple-400 hover:text-purple-600 transition-colors flex flex-col items-center gap-2"
+                  className="w-full border-2 border-dashed border-border rounded-lg px-3 py-6 text-sm text-muted-foreground hover:border-primary hover:text-primary transition-colors flex flex-col items-center gap-2"
                 >
                   <Upload className="w-6 h-6" />
                   Click to upload your resume
@@ -263,23 +263,23 @@ export default function ApplyPage() {
                 onChange={handleResumeChange}
                 className="hidden"
               />
-              {errors.resume && <p className="text-red-500 text-xs mt-1">{errors.resume}</p>}
+              {errors.resume && <p className="text-destructive text-xs mt-1">{errors.resume}</p>}
             </div>
 
             {/* Cover Letter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Cover Letter</label>
+              <label className="block text-sm font-medium text-foreground mb-1">Cover Letter</label>
               <textarea
                 value={coverLetter}
                 onChange={(e) => setCoverLetter(e.target.value)}
                 rows={4}
                 placeholder="Tell us why you're a great fit for this role..."
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                className="w-full border border-input bg-background text-foreground rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent resize-none placeholder:text-muted-foreground"
               />
             </div>
 
             {submitError && (
-              <p className="text-red-500 text-sm">{submitError}</p>
+              <p className="text-destructive text-sm">{submitError}</p>
             )}
 
             <Button
